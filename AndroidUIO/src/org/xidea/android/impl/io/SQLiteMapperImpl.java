@@ -114,7 +114,8 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 			this.tableName = c.getSimpleName();
 			return 1;
 		} else {
-			this.tableName = entry.name();
+			String name = entry.name();
+			this.tableName = name.length() == 0?c.getSimpleName():name;
 			return entry.version();
 		}
 
@@ -473,6 +474,7 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 					.append('(').append(index).append(')');
 		}
 		buf.append("; ");
+		//System.out.println(buf);
 		return buf.toString();
 	}
 

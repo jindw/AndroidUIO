@@ -38,7 +38,7 @@ public interface SQLiteMapper<T> {
 
 	/**
 	 * 通过where 语句 查找匹配的全部对象
-	 * @see SQLiteMapperImpl#query(String, Object...)
+	 * @see org.xidea.android.impl.io.SQLiteMapperImpl#query(String, Object...)
 	 * @param where
 	 * @param selectionArgs
 	 * @return
@@ -66,7 +66,7 @@ public interface SQLiteMapper<T> {
 	 * 属性注解， 注解内容为对应sqlite 字段定义（字段名除外）
 	 */
 	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.FIELD,ElementType.TYPE})
+	@Target({ElementType.FIELD})
 	public @interface SQLiteProperty {
 		public String value() default "";
 		public boolean index() default false;

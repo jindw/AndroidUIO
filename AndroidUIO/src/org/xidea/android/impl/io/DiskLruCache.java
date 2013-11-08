@@ -114,7 +114,7 @@ public final class DiskLruCache implements Closeable {
 			}
 
 		} finally {
-			FileUtil.closeQuietly(in);
+			StreamUtil.closeQuietly(in);
 		}
 	}
 

@@ -10,7 +10,6 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
@@ -24,11 +23,12 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.commons.logging.Log;
 import org.xidea.android.Callback;
 import org.xidea.android.CommonLog;
-import org.xidea.android.Callback.CanceledException;
+import org.xidea.android.Callback.Cancelable.CanceledException;
 import org.xidea.android.Callback.PrepareCallback;
 import org.xidea.android.impl.ApplicationState;
-import org.xidea.android.impl.io.HttpInterface.CancelState;
+import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.impl.io.HttpInterface.NetworkStatistics;
+import org.xidea.android.impl.ui.UIFacade;
 import org.xidea.el.ExpressionSyntaxException;
 import org.xidea.el.impl.ReflectUtil;
 import org.xidea.el.json.JSONDecoder;
@@ -36,7 +36,7 @@ import org.xidea.el.json.JSONDecoder;
 import android.os.Handler;
 import android.os.Looper;
 
-public class HttpUtil {
+public final class HttpUtil {
 	private static Log log = CommonLog.getLog();
 
 	private static final String ANDROID_ASSET = "/android_asset/";
@@ -49,6 +49,8 @@ public class HttpUtil {
 	static Pattern CHARSET = Pattern.compile(".*?;\\s*charset=([\\w\\-]+).*?");
 	static Pattern UTF8_DEFAULT_CONTENT_TYPE = Pattern
 			.compile("^(?:application\\/json|text\\/json)");
+	static Pattern TEXT_CONTENT_TYPE = Pattern.compile("^text\\/.*");
+	
 
 	private static HashMap<Type, Type[]> callbackTypeMap = new HashMap<Type, Type[]>();
 	static void startCacheAsyn(final HttpImplementation impl) {
@@ -61,8 +63,9 @@ public class HttpUtil {
 		}.start();
 	}
 
-	static void showTips(String msg) {
-
+	private HttpUtil(){}
+	static void showNetworkTips(String msg) {
+		UIFacade.getInstance().shortTips(msg);
 	}
 
 	static String guessCharset(URLConnection conn) {
@@ -71,12 +74,17 @@ public class HttpUtil {
 		}
 		String contentType = conn.getContentType();
 		if (contentType == null) {
-			return DEFAULT_CHARSET;
+			return null;
 		}
 		String charset = CHARSET.matcher(contentType).replaceFirst("$1");
 		if (charset.equals(contentType)) {
-			charset = UTF8_DEFAULT_CONTENT_TYPE.matcher(contentType).find() ? "UTF-8"
-					: DEFAULT_CHARSET;
+			if(UTF8_DEFAULT_CONTENT_TYPE.matcher(contentType).find() ){
+				return "UTF-8";
+			}else if(TEXT_CONTENT_TYPE.matcher(contentType).find()){
+				return DEFAULT_CHARSET;
+			}else{
+				return null;
+			}
 		}
 		return charset;
 	}
@@ -84,7 +92,7 @@ public class HttpUtil {
 	static final Pattern COOKIE_ENTRY = Pattern
 			.compile("(?:^|;\\s*)([\\w\\.\\-\\_\\$]+)(?:=([^;]+))");
 
-	static URL appendCookie(URL url, String cookie)
+	static URL appendCookieAsQuery(URL url, String cookie)
 			throws MalformedURLException {
 		StringBuilder buf = new StringBuilder(url.getPath());
 		String query = url.getQuery();
@@ -110,24 +118,24 @@ public class HttpUtil {
 		return url;
 	}
 
-	private static Pattern CLEAR_REGEXP = Pattern
-			.compile("(^|[?&])(?:bduss|timestamp)=\\w+");
 	private static Pattern DOUBLE_SPLIT_REGEXP = Pattern
 			.compile("([^:])\\/\\/+");
 
-	public static URI toIdentity(URL url) {
-
-		try {
-			String clearURL = CLEAR_REGEXP.matcher(url.toString()).replaceAll(
-					"$1");
-			return URI.create(clearURL);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
+//	private static Pattern CLEAR_REGEXP = Pattern
+//			.compile("(^|[?&])(?:bduss|timestamp)=\\w+");
+//	public static URI toIdentity(URL url) {
+//		try {
+//			String clearURL = CLEAR_REGEXP.matcher(url.toString()).replaceAll(
+//					"$1");
+//			return URI.create(clearURL);
+//		} catch (Exception e) {
+//			throw new RuntimeException(e);
+//		}
+//	}
 
 	static InputStream getInputStream(URLConnection conn) throws IOException {
 		String contentEncoding = conn.getContentEncoding();
+		//log.info("contentEncoding:"+contentEncoding);
 		InputStream in = conn.getInputStream();
 		if (contentEncoding != null && contentEncoding.indexOf("gzip") >= 0
 				&& !(in instanceof GZIPInputStream)) {
@@ -137,19 +145,22 @@ public class HttpUtil {
 			}
 			// check if matches standard gzip maguc number
 			in.mark(2);
-			if ((in.read() & 0xFF) == 0x1f && (in.read() & 0xFF) == 0x8b) {
+			if (in.read() == 0x1f && in.read()  == 0x8b) {
 				in.reset();
-				log.error("GZip" + conn.getURL());
+				log.info("try ungzip:" + conn.getURL());
 				in = new GZIPInputStream(in);
 			} else {
 				in.reset();
 			}
+			return in;
+		}else{
+			//conn inputstream no buffer by default(buffered for beter performance)!!
+			return new BufferedInputStream(in);
 		}
-		return in;
 
 	}
 
-	static URL parseURL(String path) {
+	public static URL parseURL(String path) {
 		if (path == null || path.length() == 0) {
 			return null;
 		}
@@ -210,7 +221,7 @@ public class HttpUtil {
 	}
 
 	public static void addMultiPartPost(HttpURLConnection conn,
-			Map<String, Object> params, String charset, CancelState cancelState)
+			Map<String, Object> params, String charset, Cancelable cancelState)
 			throws IOException {
 		boolean sendzip = false;
 		String boundaryPostfix = Double.toHexString(Math.random() * 0xFFFF);
@@ -251,7 +262,7 @@ public class HttpUtil {
 		assertNotCanceled(conn, cancelState);
 	}
 
-	static void assertNotCanceled(URLConnection conn, CancelState cancelState)
+	static void assertNotCanceled(URLConnection conn, Cancelable cancelState)
 			throws CanceledException {
 		// TODO:...
 		if (cancelState != null && cancelState.isCanceled()) {
@@ -435,7 +446,7 @@ public class HttpUtil {
 			} else{
 				return HttpUtil.transform(text, requiredTye);
 			}
-			HttpUtil.showTips(text);
+			log.warn(text);
 			throw new ExpressionSyntaxException("无效JSON表达式："+text);
 		}else{
 			return JSON_DECODER.transform(source, requiredTye);

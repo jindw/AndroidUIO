@@ -11,10 +11,10 @@ import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.util.Map;
 
-import org.xidea.android.Callback.CanceledException;
+import org.xidea.android.Callback.Cancelable;
+import org.xidea.android.Callback.Cancelable.CanceledException;
 import org.xidea.android.CommonLog;
 import org.xidea.android.impl.ApplicationState;
-import org.xidea.android.impl.io.HttpInterface.CancelState;
 import org.xidea.android.impl.io.HttpInterface.HttpRequest;
 import org.xidea.android.impl.io.HttpInterface.HttpMethod;
 
@@ -28,7 +28,7 @@ public class HttpRequestImpl implements HttpRequest {
 
 	@Override
 	public URLConnection init(URL url, HttpMethod method,
-			Map<String, String> requestHeaders, CancelState cancelState)
+			Map<String, String> requestHeaders, Cancelable cancelState)
 			throws IOException {
 		if ("file".equals(url.getAuthority())) {
 			return url.openConnection();
@@ -59,12 +59,12 @@ public class HttpRequestImpl implements HttpRequest {
 		return false;
 	}
 	private URLConnection doInit(URL url, Map<String, String> requestHeaders,
-			CancelState cancelState, Proxy proxy) throws IOException,
+			Cancelable cancelState, Proxy proxy) throws IOException,
 			CanceledException {
 		HttpUtil.assertNotCanceled(null, cancelState);
 		if(isWapIp(proxy)){
 			String cookie = requestHeaders.get("Cookie");
-			url = HttpUtil.appendCookie(url, cookie);
+			url = HttpUtil.appendCookieAsQuery(url, cookie);
 		}
 		URLConnection conn = proxy == null ? url.openConnection() : url.openConnection(proxy);
 		HttpUtil.assertNotCanceled(conn, cancelState);
@@ -77,8 +77,8 @@ public class HttpRequestImpl implements HttpRequest {
 		return conn;
 	}
 	@Override
-	public void postData(HttpURLConnection conn, Map<String, Object> post,
-			CancelState cancelState) throws IOException {
+	public void postData(HttpURLConnection conn, Map<String, Object> mutiData,
+			Cancelable cancelState) throws IOException {
 		conn.setRequestMethod("POST");
 		conn.setDoInput(true);
 		conn.setDoOutput(true);
@@ -86,14 +86,17 @@ public class HttpRequestImpl implements HttpRequest {
 
 		String charset = DEFAULT_CHARSET.name();
 		conn.setRequestProperty("Charset", charset);
-		if (post != null) {
-			HttpUtil.addMultiPartPost(conn, post, charset, cancelState);
+		if (mutiData != null) {
+			HttpUtil.addMultiPartPost(conn, mutiData, charset, cancelState);
+			conn.setChunkedStreamingMode(0);
 		} else {
-			String query =HttpUtil. buildQuery(conn.getURL(), post, charset);
+			//TODO: for performance , not connect string ,simple write to output
+			String query =HttpUtil. buildQuery(conn.getURL(), mutiData, charset);
 			byte[] data = query == null ? null : query.getBytes();
 			conn.setRequestProperty("Content-Length",
 					String.valueOf(data.length));
 			OutputStream out = conn.getOutputStream();
+			conn.setFixedLengthStreamingMode(data.length);
 			out.write(data);
 			out.flush();
 		}

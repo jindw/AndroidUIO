@@ -24,7 +24,7 @@ import org.xidea.android.Callback;
 import org.xidea.android.CommonLog;
 import org.xidea.android.SQLiteMapper;
 import org.xidea.android.impl.ApplicationState;
-import org.xidea.android.impl.io.HttpInterface.CancelState;
+import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.impl.io.HttpInterface.HttpCache;
 import org.xidea.android.impl.io.HttpInterface.HttpMethod;
 import org.xidea.android.impl.io.HttpInterface.NetworkStatistics;
@@ -44,7 +44,7 @@ public class HttpCacheImpl implements HttpCache {
 			dir.mkdirs();
 		}
 		cache = DiskLruCache.open(dir, VERSION, MAX_COUNT, maxCacheSize);
-		mapper = StorageImpl.INSTANCE.getSQLiteStorage(HttpCacheEntry.class,ApplicationState.getInstance().getApplication());// new
+		mapper = StorageFactory.INSTANCE.getSQLiteStorage(HttpCacheEntry.class,ApplicationState.getInstance().getApplication());// new
 																	// SQLiteMapperImpl<CacheEntry>(context,
 																	// CacheEntry.class);
 	}
@@ -89,7 +89,7 @@ public class HttpCacheImpl implements HttpCache {
 		if (entry.responseBody == null) {
 			InputStream in = cache.get(key(entry));
 			if (in != null) {
-				return FileUtil.loadTextAndClose(in,
+				return StreamUtil.loadTextAndClose(in,
 						entry.charset == null ? HttpUtil.DEFAULT_CHARSET
 								: entry.charset);
 			}
@@ -98,7 +98,7 @@ public class HttpCacheImpl implements HttpCache {
 	}
 
 	public InputStream saveResult(final HttpCacheEntry entry,
-			final URLConnection conn, CancelState cancelState,
+			final URLConnection conn, Cancelable cancelState,
 			final long timeStart) throws IOException {
 		final URL url = conn.getURL();
 		final NetworkStatistics networkStatistics = HttpImplementation.getInstance()
@@ -139,13 +139,17 @@ public class HttpCacheImpl implements HttpCache {
 		String charset = HttpUtil.guessCharset(conn);
 		contents.put("charset", entry.charset = charset);
 		if (charset != null) {
-			String result = FileUtil.loadTextAndClose(in, entry.charset);
+			String result = StreamUtil.loadTextAndClose(in, entry.charset);
 
 			networkStatistics.onHttpNetworkDuration(url,
 					System.currentTimeMillis() - timeStart);
 			// log.timeEnd("read" + path);
 			contents.put("responseBody", entry.responseBody = result);
-			mapper.update(contents);
+			try{
+				mapper.update(contents);
+			}catch(Exception e){
+				log.warn(e);
+			}
 			return null;
 		} else {
 			contents.put("responseBody", entry.responseBody = null);

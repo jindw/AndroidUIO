@@ -3,7 +3,6 @@ package org.xidea.android.impl.io;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -11,7 +10,13 @@ import java.net.URLConnection;
 import java.util.Map;
 
 import org.xidea.android.Callback;
+import org.xidea.android.Callback.Cancelable;
 
+/**
+ * @see HttpImplementation
+ * @author jindawei
+ *
+ */
 public interface HttpInterface {
 
 	/**
@@ -20,7 +25,7 @@ public interface HttpInterface {
 	 * @param callback
 	 * @param url
 	 */
-	public CancelState get(Callback<? extends Object> callback, String url);
+	public Cancelable get(Callback<? extends Object> callback, String url);
 
 	/**
 	 * 发起异步post请求，callback也将在发起线程执行（如果是ui线程发起的调换用，callback将在ui线程回调，可以直接操作ui）
@@ -29,13 +34,13 @@ public interface HttpInterface {
 	 * @param url
 	 * @param mutipart
 	 */
-	public CancelState post(Callback<? extends Object> callback, String url,
+	public Cancelable post(Callback<? extends Object> callback, String url,
 			String key, File mutipart);
 
-	public CancelState post(Callback<? extends Object> callback, String url,
+	public Cancelable post(Callback<? extends Object> callback, String url,
 			String key, InputStream mutipart);
 
-	public CancelState dispatchRequest(AsynTask task);
+	public Cancelable dispatchRequest(AsynTask task);
 
 	public abstract String loadText(String url, boolean ignoreCache);
 
@@ -61,11 +66,11 @@ public interface HttpInterface {
 
 	public interface HttpRequest {
 		public URLConnection init(URL url, HttpMethod method,
-				Map<String, String> requestHeaders, CancelState cancelGroup)
+				Map<String, String> requestHeaders, Cancelable cancelGroup)
 				throws IOException;
 
 		public void postData(HttpURLConnection conn, Map<String, Object> post,
-				CancelState cancelGroup) throws IOException;
+				Cancelable cancelGroup) throws IOException;
 	}
 	public interface HttpCache {
 		public HttpCacheEntry require(URI url, HttpMethod method,
@@ -80,28 +85,27 @@ public interface HttpInterface {
 				throws IOException;
 
 		public InputStream saveResult(HttpCacheEntry entry, URLConnection conn,
-				CancelState cancelState, long timeStart) throws IOException;
+				Cancelable cancelState, long timeStart) throws IOException;
 
 		public void addCacheHeaders(HttpCacheEntry entry, URLConnection conn)
 				throws IOException;
 	}
-	public interface CancelState{
-		void cancel();
-		boolean isCanceled();
-	}
-	public interface AsynTask extends CancelState{
+	public interface AsynTask extends Cancelable{
 
+		void execute(Object result);
+		void error(Throwable e);
+		void complete();
+		
+		
 		URL getURL();
 		long getCreateTime();
 		long getStartTime();
 		int getTimeout();
+		
 		Callback<? extends Object> getCallback();
 		Object requireLock();
-		void start();
-		Object loadResult(Type type);
-		void execute(Object result);
-		void error(Throwable e);
-		void complete();
+		void onStart();
+		Object load(CachePolicy cachePolicy);
 		boolean hitGroup(Object group);
 		void interrupt();
 	}

@@ -15,7 +15,7 @@ import org.xidea.android.impl.ApplicationState;
 
 public class UIFacade {
 	private static final UIFacade INSTANCE = new UIFacade();
-	private int androidbaseReservedId = android.R.id.background;
+	private int androidbaseReservedId = 0xFFFFFFFF;//android.R.id.custom;
 	private WeakReference<Toast> currentToast = null;
 	public void longTips(CharSequence message) {
 		showTips(message,Toast.LENGTH_LONG);

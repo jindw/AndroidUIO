@@ -2,13 +2,15 @@ package org.xidea.android.impl.io;
 
 
 import org.xidea.android.Callback;
-import org.xidea.android.Callback.CanceledException;
+import org.xidea.android.Callback.Cancelable;
+import org.xidea.android.Callback.Cancelable.CanceledException;
 import org.xidea.android.CommonLog;
 import org.xidea.android.impl.ApplicationState;
 import org.xidea.android.impl.DebugProvider;
 
 import org.apache.commons.logging.Log;
 
+import android.app.Application;
 import android.os.Build;
 
 import java.io.File;
@@ -18,6 +20,7 @@ import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
@@ -26,10 +29,11 @@ import java.util.Map;
 
 public class HttpImplementation implements HttpInterface {
 
+	private static final String NETWORK_UNAVALIABLE = "网络暂无法连接， 请检查网络后再尝试！";
 	private final static Log log = CommonLog.getLog();
 	private static final int WIFI_TRY_COUNT = 2;
 	private static final int MOBILE_TRY_COUNT = 3;
-	private static final long MAX_RETRY_TIME = 1000 * 25;
+	private static final long MAX_RETRY_TIME = 1000 * 25 * 10;
 
 	static {
 		String keepAlive = String.valueOf(Build.VERSION.SDK_INT > Build.VERSION_CODES.ECLAIR_MR1);
@@ -43,31 +47,38 @@ public class HttpImplementation implements HttpInterface {
 	private HttpCacheImpl cacheImpl;
 	private Object cacheLock = new Object();
 	private HttpRequestImpl request = new HttpRequestImpl();
-	private HttpAsynImpl asyn ;
+	private HttpAsynImpl asyn = new HttpAsynImpl() ;
 	private NetworkStatistics networkStatistics = HttpUtil.DEFAULT_NETWORK_STATISTICS;
 
 	Map<String, String> requestHeaders = new HashMap<String, String>();
 	{
 		requestHeaders.put("User-Agent", "Android Client");
+		//requestHeaders.put("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/536.26.14 (KHTML, like Gecko) Version/6.0.1 Safari/536.26.14");
+		
 		requestHeaders.put("Accept", "*/*");
 		requestHeaders.put("X-Wap-Proxy-Cookie", "none");
 		requestHeaders.put("Accept-Encoding", "gzip");
-		asyn = new HttpAsynImpl();
 		
 	}
 	public static HttpImplementation getInstance() {
 		return instance;
 	}
-	public void init(final File cacheDir,
+	public void init(final Application application,
 			final int cacheSize) {
-		this.cacheDir = cacheDir;
+		File extCache = application.getExternalCacheDir();
+		if(extCache == null ){
+			//TODO: 监控SD卡
+		}else{
+			this.cacheDir = new File(extCache,"uio_http_cache");
+			
+		}
 		this.cacheSize = cacheSize;
 	}
 
 
 	void initCache() {
 		synchronized (cacheLock) {
-			if (cacheImpl == null && cacheDir != null && cacheDir.exists()) {
+			if (cacheImpl == null && cacheDir != null && (cacheDir.exists() ||cacheDir.mkdirs())) {
 				try {
 					cacheImpl = new HttpCacheImpl(cacheDir, cacheSize);
 				} catch (Exception e) {
@@ -152,14 +163,14 @@ public class HttpImplementation implements HttpInterface {
 		this.networkStatistics = networkStatistics;
 	}
 
-	InputStream getStream(URL url, HttpMethod method, Map<String, Object> post,
-			CancelState cancelGroup, CachePolicy cache)
+	public InputStream getStream(URL url, HttpMethod method, Map<String, Object> post,
+			Cancelable cancelable, CachePolicy cache)
 			throws IOException {
-		return new Request(url, cancelGroup, cache, true)
+		return new Request(url, cancelable, cache, true)
 				.doRequest(method, post, InputStream.class);
 	}
-	String getString(URL url, HttpMethod method, Map<String, Object> post,
-			CancelState cancelGroup, CachePolicy cache)
+	public String getString(URL url, HttpMethod method, Map<String, Object> post,
+			Cancelable cancelGroup, CachePolicy cache)
 			throws IOException {
 		ApplicationState as = ApplicationState.getInstance();
 		int tryCount = 0;
@@ -177,11 +188,11 @@ public class HttpImplementation implements HttpInterface {
 			} catch (RedirectOutException re) {
 				if (as.isWifiConnected()) {// wifi 资费页面
 					// 不用重试了，直接提示返回
-					HttpUtil.showTips("网络暂无法连接， 请检查网络后再尝试！");
+					HttpUtil.showNetworkTips(NETWORK_UNAVALIABLE);
 					throw re;
 				}else if(as.isInternetConnected()){/// wap 资费页面
 					if (++RedirectOutException.inc >= 2) {// 事不过三
-						HttpUtil.showTips("网络暂无法连接， 请检查网络后再尝试！");
+						HttpUtil.showNetworkTips(NETWORK_UNAVALIABLE);
 						throw re;
 					}
 				}
@@ -197,7 +208,7 @@ public class HttpImplementation implements HttpInterface {
 				while (true) {
 					if (e != null
 							&& ((System.currentTimeMillis() - beginTime) > MAX_RETRY_TIME || ++tryCount >= maxCount)) {
-						HttpUtil.showTips("网络暂无法连接， 请检查网络后再尝试！");
+						HttpUtil.showNetworkTips(NETWORK_UNAVALIABLE);
 						throw e;
 					}
 					if (tryCount <= 1) {
@@ -216,11 +227,24 @@ public class HttpImplementation implements HttpInterface {
 
 
 	/**
+	 * 用于生成入库的uri
+	 * @param url
+	 * @return
+	 */
+	protected URI toIdentity(URL url) {
+		try {
+			return url.toURI();
+		} catch (URISyntaxException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	/**
 	 * 
 	 * @param rawURL
 	 * @param method
 	 * @param post
-	 * @param cancelState
+	 * @param cancelable
 	 * @param toString
 	 *            是否转为 string 返回，如果是缓存数据，永远只范围缓存实体
 	 * @param onlyCache
@@ -230,12 +254,11 @@ public class HttpImplementation implements HttpInterface {
 	 * @return
 	 * @throws IOException
 	 */
-
 	class Request {
 		final long start;
 		final URI uri;
 		final URL url;
-		final CancelState cancelState;
+		final Cancelable cancelable;
 		final CachePolicy cache;
 		final boolean saveCache;
 
@@ -244,15 +267,15 @@ public class HttpImplementation implements HttpInterface {
 		HttpCacheEntry entry;
 		Object result;// 可以是，URLConnection，InputStream，String，HttpCacheEntry
 
-		Request(final URL rawURL, CancelState cancelState,
+		Request(final URL rawURL, Cancelable cancelState,
 				CachePolicy cache, boolean saveCache)
 				throws IOException {
 			this.start = System.currentTimeMillis();
-			this.uri = HttpUtil.toIdentity(rawURL);
+			this.uri = toIdentity(rawURL);
 			this.url = rawURL;
 			this.cache = cache;
 			this.saveCache = saveCache;
-			this.cancelState = cancelState ;
+			this.cancelable = cancelState ;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -282,7 +305,7 @@ public class HttpImplementation implements HttpInterface {
 				if (type == String.class) {
 					if (result instanceof InputStream) {
 						String encoding = HttpUtil.guessCharset(conn);
-						result = FileUtil.loadTextAndClose(
+						result = StreamUtil.loadTextAndClose(
 								(InputStream) result, encoding);
 					}
 				}
@@ -298,9 +321,9 @@ public class HttpImplementation implements HttpInterface {
 					result = HttpUtil.openFileStream(url);
 				} else if (HttpMethod.POST == method) {
 					result = conn = request.init(url, method, requestHeaders,
-							cancelState);
+							cancelable);
 					request.postData((HttpURLConnection) conn, post,
-							cancelState);
+							cancelable);
 				} else if (HttpMethod.GET == method) {
 					doGet();
 				} else {
@@ -334,13 +357,10 @@ public class HttpImplementation implements HttpInterface {
 
 		private void doGet() throws IOException {
 			initCache();
-			if (cache == CachePolicy.CacheOnly) {
-				if (cacheImpl != null) {
-					entry = cacheImpl.require(uri, HttpMethod.GET, requestHeaders);
+			if (cacheImpl == null) {// no cache
+				if(cache != CachePolicy.CacheOnly){
+					initConn(HttpMethod.GET);
 				}
-				tryCache(false);
-			} else if (cacheImpl == null) {// no cache
-				initConn(HttpMethod.GET);
 			} else {
 				entry = cacheImpl.require(uri, HttpMethod.GET, requestHeaders);
 				if (cache == CachePolicy.CacheOnly) {
@@ -370,8 +390,8 @@ public class HttpImplementation implements HttpInterface {
 
 		private void initConn(HttpMethod method) throws IOException {
 			result = conn = (HttpURLConnection) request.init(url, method,
-					requestHeaders, cancelState);
-			System.out.println(conn.getRequestProperties());
+					requestHeaders, cancelable);
+			//System.out.println(conn.getRequestProperties());
 			//System.out.println(conn.getHeaderFields());
 		}
 
@@ -400,7 +420,7 @@ public class HttpImplementation implements HttpInterface {
 				if (entry == null) {
 					entry = cacheImpl.require(uri, HttpMethod.GET, requestHeaders);
 				}
-				InputStream ws = cacheImpl.saveResult(entry, conn, cancelState,
+				InputStream ws = cacheImpl.saveResult(entry, conn, cancelable,
 						start);
 				result = (ws == null ? entry : ws);
 			}
@@ -450,26 +470,26 @@ public class HttpImplementation implements HttpInterface {
 
 
 	@Override
-	public CancelState post(Callback<? extends Object> callback, String url, String key, File file) {
+	public Cancelable post(Callback<? extends Object> callback, String url, String key, File file) {
 		return dispatchRequest(new HttpAsynImpl.TaskImpl(this,url,
 				HttpInterface.HttpMethod.POST, callback, key, file));
 	}
 
 	@Override
-	public CancelState post(Callback<? extends Object> callback, String url, String key,
+	public Cancelable post(Callback<? extends Object> callback, String url, String key,
 			InputStream in) {
 		return dispatchRequest(new HttpAsynImpl.TaskImpl(this,url,
 				HttpInterface.HttpMethod.POST, callback, key, in));
 	}
 
 	@Override
-	public CancelState get(Callback<? extends Object> callback, String url) {
+	public Cancelable get(Callback<? extends Object> callback, String url) {
 		return dispatchRequest(new HttpAsynImpl.TaskImpl(this,url, HttpInterface.HttpMethod.GET,
 				callback, null, null));
 	}
 
 	@Override
-	public CancelState dispatchRequest(HttpInterface.AsynTask task){
+	public Cancelable dispatchRequest(HttpInterface.AsynTask task){
 		asyn.dispatchRequest(task);
 		return task;
 	}

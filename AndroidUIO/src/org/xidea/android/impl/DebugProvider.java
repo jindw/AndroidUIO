@@ -20,9 +20,9 @@ import android.util.Base64;
 
 import org.xidea.android.CommonLog;
 import org.xidea.android.SQLiteMapper;
-import org.xidea.android.impl.io.FileUtil;
 import org.xidea.android.impl.io.HttpCacheEntry;
 import org.xidea.android.impl.io.SQLiteMapperImpl;
+import org.xidea.android.impl.io.StreamUtil;
 
 public class DebugProvider extends ContentProvider {
 	private static final int MAX_SIZE = 40;
@@ -136,7 +136,7 @@ public class DebugProvider extends ContentProvider {
 				if (content == null) {
 					File file = info.cacheFile;
 					if (file != null && file.exists() && file.isFile()) {
-						data = FileUtil.loadBytesAndClose(new FileInputStream(
+						data = StreamUtil.loadBytesAndClose(new FileInputStream(
 								file));
 						charset = null;
 					}

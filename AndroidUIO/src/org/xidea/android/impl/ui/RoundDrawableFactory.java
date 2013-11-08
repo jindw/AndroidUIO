@@ -10,6 +10,8 @@ import android.graphics.PorterDuff.Mode;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 
 import org.xidea.android.DrawableFactory.DefaultDrawableFactory;
 import org.xidea.android.impl.ApplicationState;
@@ -17,8 +19,8 @@ import org.xidea.android.impl.ApplicationState;
 public class RoundDrawableFactory extends DefaultDrawableFactory {
 	private static final Resources RESOURCES = ApplicationState.getInstance().getApplication().getResources();
 
-	public RoundDrawableFactory(int radius) {
-		this.radius = radius;
+	public RoundDrawableFactory(float radiusDip) {
+		this.radius = (int)dipToPixels(radiusDip);
 	}
 
 	@Override
@@ -26,24 +28,27 @@ public class RoundDrawableFactory extends DefaultDrawableFactory {
 		return createBoxBitmapAndCleanRaw(bitmap);
 	}
 
-	int radius = 5;
-	int shadowRadius = 0;
-	int shadowDx = 0;
-	int shadowDy = 0;
-	int borderWidth;
-	int borderColor;
-	int shadowColor;
+	protected int radius = 0;
+	protected int shadowRadius = 0;
+	protected int shadowDx = 0;
+	protected int shadowDy = 0;
+	protected int borderWidth;
+	protected int borderColor;
+	protected int shadowColor;
 
-	public void setShadow(float shadowRadius, float shadowDx, float shadowDy,
+	public void setShadow(float shadowRadiusDip, float shadowDipDx, float shadowDipDy,
 			int shadowColor) {
-		this.shadowRadius = (int) shadowRadius;
-		this.shadowDx = (int) shadowDx;
-		this.shadowDy = (int) shadowDy;
+		this.shadowRadius =(int) dipToPixels(shadowRadiusDip);
+		this.shadowDx = (int) dipToPixels(shadowDipDx);
+		this.shadowDy = (int) dipToPixels(shadowDipDy);
 		this.shadowColor = shadowColor;
 	}
-
+	public static float dipToPixels(float dipValue) {
+	    DisplayMetrics metrics = RESOURCES.getDisplayMetrics();
+	    return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dipValue, metrics);
+	}
 	public void setBorder(float borderWidth, int color) {
-		this.borderWidth = (int) borderWidth;
+		this.borderWidth = (int) dipToPixels(borderWidth);
 		this.borderColor = color;
 	}
 
