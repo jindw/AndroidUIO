@@ -9,6 +9,7 @@ import org.xidea.android.CommonLog;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.webkit.WebView;
 
 /**
  * System Bug Fixed Utility
@@ -45,6 +46,7 @@ public class WebViewCoreBugFixed {
 					.getDeclaredField("sWebCoreHandler");
 			sWebCoreHandlerField.setAccessible(true);
 			Handler sWebCoreHandler = (Handler) sWebCoreHandlerField.get(null);
+			//TODO:... maybe null,how to init ?
 			Method getIMessengerMethod = Handler.class
 					.getDeclaredMethod("getIMessenger");
 			getIMessengerMethod.setAccessible(true);
