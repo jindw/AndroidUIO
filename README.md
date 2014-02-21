@@ -1,7 +1,7 @@
 项目简介(Description)
 ----
-  * [中文版](README_zh.md)
-  * [English Version](README_en.md)
+  * [中文版](doc/README_zh.md)
+  * [English Version](doc/README_en.md)
 
 运用实例(Example)
 ----
