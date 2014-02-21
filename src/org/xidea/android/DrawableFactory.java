@@ -1,8 +1,6 @@
 package org.xidea.android;
 
 import org.apache.commons.logging.Log;
-import org.xidea.android.impl.ApplicationState;
-import org.xidea.android.impl.ui.ImageUtil;
 import org.xidea.android.impl.ui.MovieDrawable;
 
 import android.graphics.Bitmap;
@@ -71,31 +69,9 @@ public interface DrawableFactory {
 		public static Log log = CommonLog.getLog();
 
 
-		static class BitmapRecycle {
-			private Bitmap bitmap;
-			BitmapRecycle(Bitmap bitmap) {
-				this.bitmap = bitmap;
-				ImageUtil.retain(bitmap);
-			}
-			public void finalize() throws Throwable {
-				try {
-					super.finalize();
-				} finally {
-					ImageUtil.release(bitmap);
-				}
-			}
-		}
-
-		final BitmapRecycle recycled;
-
 		public SafeBitmapDrawable(Bitmap bitmap) {
-			super(ApplicationState.getInstance().getApplication()
+			super(UIO.getApplication()
 					.getResources(), bitmap);
-			if (ImageUtil.GC_IGNORED_BITMAP && bitmap != null) {
-				this.recycled = new BitmapRecycle(bitmap);
-			} else {
-				this.recycled = null;
-			}
 		}
 
 		public void draw(Canvas canvas) {
