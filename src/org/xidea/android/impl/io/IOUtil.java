@@ -2,15 +2,13 @@ package org.xidea.android.impl.io;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 
-public class StreamUtil {
-
-	
-
+public class IOUtil {
 	public static byte[] loadBytesAndClose(InputStream in) throws IOException {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		try {
@@ -106,6 +104,31 @@ public class StreamUtil {
 			i += in.read(bs, i, count - i);
 		}
 		return bs;
+	}
+
+	/**
+	 * Recursively delete everything in {@code dir}.
+	 */
+	// TODO: this should specify paths as Strings rather than as Files
+	static void deleteRecursively(File dir) throws IOException {
+		if (dir.isDirectory()) {
+			for (final File file : dir.listFiles()) {
+				deleteRecursively(file);
+			}
+		}
+		if (dir.exists() && !dir.delete()) {
+			throw new IOException("failed to delete file: " + dir);
+		}
+	}
+
+	static void deleteIfExists(File... files) throws IOException {
+		if (files != null) {
+			for (File file : files) {
+				if (file.exists() && !file.delete()) {
+					throw new IOException();
+				}
+			}
+		}
 	}
 
 

@@ -1,5 +1,7 @@
 package org.xidea.android.impl.io;
 
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -9,11 +11,15 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.WeakHashMap;
 
-import org.apache.commons.logging.Log;
+import org.xidea.android.Callback;
+import org.xidea.android.SQLiteMapper;
+import org.xidea.android.impl.DebugLog;
 import org.xidea.el.impl.ReflectUtil;
 import org.xidea.el.json.JSONDecoder;
 import org.xidea.el.json.JSONEncoder;
@@ -23,31 +29,33 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.os.Handler;
-import android.os.Looper;
 
-import org.xidea.android.Callback;
-import org.xidea.android.SQLiteMapper;
-import org.xidea.android.impl.CommonLog;
-
-public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
-
-	private static Log log = CommonLog.getLog();
+public class SQLiteMapperImpl<T> extends SQLiteMapperAsynSupport<T> implements
+		SQLiteMapper<T> {
 	private SQLiteOpenHelper helper;
 	private String tableName;
 	private String primaryField;
 	private ArrayList<Field> fields = new ArrayList<Field>();
 	private HashMap<String, Field> fieldMap = new HashMap<String, Field>();
+	private HashMap<String, Reference<T>> idCacheMap = new HashMap<String, Reference<T>>();
+	private WeakHashMap<T, Map<String,Object>> backupMap = new WeakHashMap<T, Map<String,Object>>();
 	private Class<T> type;
 	private String autoField;
 
 	private Object lock = new Object();
 
-	public SQLiteMapperImpl(Context context, Class<T> c) {
+	protected SQLiteMapperImpl(Context context, Class<T> c) {
 		initFields(c);
 		int version = initVersion(c);
 		this.helper = new SQLiteOpenHelper(context, this.tableName, null,
 				version) {
+			public void onDowngrade(SQLiteDatabase db, int oldVersion,
+					int newVersion) {
+				// update by default;
+				db.execSQL("DROP TABLE IF EXISTS  " + tableName);
+				db.execSQL(getCreateSQL());
+			}
+
 			@Override
 			public void onUpgrade(SQLiteDatabase db, int oldVersion,
 					int newVersion) {
@@ -67,17 +75,16 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 										m.invoke(null, db, tableName);
 										return;
 									} catch (Exception e) {
-										log.warn(e);
+										DebugLog.warn(e);
 									}
 									break;
 								}
 							}
 						}
 					}
-					// update by default;
-					db.execSQL("DROP TABLE IF EXISTS  " + tableName);
-					db.execSQL(getCreateSQL());
 				}
+				// update by default;
+				onDowngrade(db, oldVersion, newVersion);
 			}
 
 			@Override
@@ -115,7 +122,7 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 			return 1;
 		} else {
 			String name = entry.name();
-			this.tableName = name.length() == 0?c.getSimpleName():name;
+			this.tableName = name.length() == 0 ? c.getSimpleName() : name;
 			return entry.version();
 		}
 
@@ -134,13 +141,22 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see
-	 * org.xidea.android.internal.ObjectMapper#getByKey(java.lang.String,
+	 * @see org.xidea.android.internal.ObjectMapper#getByKey(java.lang.String,
 	 * java.lang.Object)
 	 */
 	@Override
 	public T getByKey(String field, Object value) {
 		synchronized (lock) {
+			boolean isPrimary = field.equals(primaryField);
+			if (isPrimary) {
+				Reference<T> ref = idCacheMap.get(value);
+				if (ref != null) {
+					T o = ref.get();
+					if (o != null) {
+						return o;
+					}
+				}
+			}
 			try {
 				SQLiteDatabase db = this.helper.getReadableDatabase();
 				try {
@@ -150,7 +166,8 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 							null, null, null, null);
 					try {
 						if (cursor.moveToFirst()) {
-							return toObject(cursor);
+							T o = toObject(cursor);
+							return o;
 						}
 					} finally {
 						cursor.close();
@@ -168,12 +185,6 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 		return null;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.xidea.android.internal.ObjectMapper#query(java.lang.String,
-	 * java.lang.Object)
-	 */
 	@Override
 	public List<T> query(String where, Object... selectionArgs) {
 		synchronized (lock) {
@@ -200,6 +211,9 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 	}
 
 	private String[] toQueryParams(Object... selectionArgs) {
+		if (selectionArgs == null) {
+			return null;
+		}
 		String[] args = new String[selectionArgs.length];
 		for (int i = 0; i < args.length; i++) {
 			Object value = selectionArgs[i];
@@ -215,6 +229,8 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 
 	public void execSQL(String sql, Object... bindArgs) {
 		synchronized (lock) {
+			backupMap.clear();
+			idCacheMap.clear();
 			SQLiteDatabase db = this.helper.getReadableDatabase();
 			try {
 				db.beginTransaction();
@@ -232,7 +248,7 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 		}
 	}
 
-	public void querySQL(Callback<Cursor> callback, String sql, 
+	public void querySQL(Callback<Cursor> callback, String sql,
 			Object... bindArgs) {
 		synchronized (lock) {
 			SQLiteDatabase db = this.helper.getReadableDatabase();
@@ -254,21 +270,41 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 
 	@Override
 	public T save(T t) {
+		Map<String, Object> backup=new HashMap<String, Object>();
+		ContentValues values = buildContent(t,backup);
+		return save(t, values,backup);
+	}
+
+	public T saveOrUpdate(T t) {
+		Map<String, Object> mapContents=new HashMap<String, Object>();
+		ContentValues values = buildContent(t,mapContents);
+		boolean existed = this.update(values,t);
+		if (!existed) {
+			this.save(t, values,mapContents);
+		}
+		return t;
+	}
+
+	private T save(T t, ContentValues values,Map<String, Object> backup) {
 		synchronized (lock) {
 			SQLiteDatabase db = this.helper.getWritableDatabase();
 			try {
-				ContentValues values = buildContent(t);
 				if (autoField != null) {
 					values.remove(autoField);
 				}
 				try {
 					db.beginTransaction();
-					long id = -1;
+					Object id = -1;
 					id = db.insert(tableName, null, values);
 					if (autoField != null) {
 						ReflectUtil.setValue(t, autoField, id);
+					} else {
+						id = ReflectUtil.getValue(t, primaryField);
 					}
 					db.setTransactionSuccessful();
+					// save cache
+					backupMap.put(t, backup);
+					idCacheMap.put(String.valueOf(id), new WeakReference<T>(t));
 				} finally {
 					db.endTransaction();
 				}
@@ -276,7 +312,64 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 			} finally {
 				db.close();
 			}
-			return t;
+		}
+		return t;
+	}
+
+	@Override
+	public boolean update(T t) {
+		ContentValues values = buildContent(t,null);
+		return this.update(values,t);
+	}
+
+
+	private boolean update(ContentValues contents, T object) {
+		Object rid = contents.get(this.primaryField);
+		if(rid == null){
+			return false;
+		}
+		synchronized (lock) {
+			String id = String.valueOf(rid);
+			Reference<T> ref = idCacheMap.get(id);
+			Map<String, Object> backupValues = backupMap.get(object);
+			if (ref != null) {
+				T refObject = ref.get();
+				if (object != refObject) {
+					// update idcachemap
+					idCacheMap.remove(id);
+				}
+			}
+			if (backupValues !=null) {//减少更新数据
+				contents = new ContentValues(contents);
+				Iterator<Entry<String, Object>> it = contents.valueSet().iterator();
+				while (it.hasNext()) {
+					Entry<String, Object> e = it.next();
+					String key = e.getKey();
+					Object backupValue = backupValues.get(key);
+				
+					if(backupValue != null && backupValue.equals(e.getValue())){
+						//DebugLog.info("ignore nochange cloumn:"+key);
+						it.remove();
+					}else{
+						backupValues.put(key,ReflectUtil.getValue(object, key));
+					}
+				}
+				
+			}
+			SQLiteDatabase db = this.helper.getWritableDatabase();
+			try {
+				db.beginTransaction();
+				try {
+					int c = db.update(tableName, contents, this.primaryField
+							+ "=?", new String[] { id });
+					db.setTransactionSuccessful();
+					return c > 0;
+				} finally {
+					db.endTransaction();
+				}
+			} finally {
+				db.close();
+			}
 		}
 	}
 
@@ -285,7 +378,6 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 		if (id == null) {
 			return false;
 		}
-
 		synchronized (lock) {
 			SQLiteDatabase db = this.helper.getWritableDatabase();
 			try {
@@ -294,7 +386,11 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 					int c = db.delete(tableName, this.primaryField + "=?",
 							new String[] { String.valueOf(id) });
 					db.setTransactionSuccessful();
-					return c>0;
+					if (c > 0) {
+						idCacheMap.remove(id);
+						return true;
+					}
+					return false;
 				} finally {
 					db.endTransaction();
 				}
@@ -305,37 +401,55 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 
 	}
 
+	/** read only query */
+
 	@Override
-	public boolean update(ContentValues contents) {
+	public int count() {
+		return count(null);
+	}
+
+	@Override
+	public int count(String where, Object... selectionArgs) {
 		synchronized (lock) {
-			SQLiteDatabase db = this.helper.getWritableDatabase();
+			SQLiteDatabase db = this.helper.getReadableDatabase();
 			try {
 				db.beginTransaction();
+				String[] args = null;
+				if (where != null && selectionArgs != null) {
+					List<String> aList = new ArrayList<String>();
+					for (Object obj : selectionArgs) {
+						if (obj != null) {
+							aList.add(String.valueOf(obj));
+						}
+					}
+					if (aList.size() > 0) {
+						args = new String[aList.size()];
+						aList.toArray(args);
+					}
+				}
+				Cursor cursor = db.query(tableName,
+						new String[] { "count(*)" }, where, args, null, null,
+						null);
 				try {
-					int c = db.update(tableName, contents, this.primaryField + "=?",
-							new String[] { String.valueOf(contents
-									.get(this.primaryField)) });
-					db.setTransactionSuccessful();
-					return c>0;
+					int result = 0;
+					if (cursor.moveToNext()) {
+						result = cursor.getInt(0);
+					}
+					return result;
 				} finally {
-					db.endTransaction();
+					cursor.close();
 				}
 			} finally {
+				db.endTransaction();
 				db.close();
 			}
 		}
-	}
-
-	@Override
-	public boolean update(T t) {
-		ContentValues values = buildContent(t);
-		return this.update(values);
 	}
 
 	/****/
 
 	@SuppressWarnings("rawtypes")
-	private ContentValues buildContent(T t) {
+	private ContentValues buildContent(T t,Map<String,Object> backup) {
 		ContentValues values = new ContentValues();
 		for (Field f : fields) {
 			String name = f.getName();
@@ -348,25 +462,36 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 				e.printStackTrace();
 			}
 			Class<?> fieldType = ReflectUtil.toWrapper(f.getType());
+			if(backup != null){
+				backup.put(name, value);
+			}
 
-			if (value == null) {
-
-			} else if (String.class == fieldType) {
-				values.put(name, (String) value);
-			} else if (URL.class == fieldType || URI.class == fieldType) {
-				values.put(name, String.valueOf(value));
-			} else if (Number.class.isAssignableFrom(fieldType)) {
-				values.put(name, ((Number) value).longValue());
-			} else if (Boolean.class.isAssignableFrom(fieldType)) {
-				values.put(name, ((Boolean) value) ? 1 : 0);
-			} else if (Date.class.isAssignableFrom(fieldType)) {
-				values.put(name, ((Date) value).getTime());
-			} else if (byte[].class.isAssignableFrom(fieldType)) {
-				values.put(name, (byte[]) value);
-			} else if (Enum.class.isAssignableFrom(fieldType)) {
-				values.put(name, ((Enum) value).ordinal());
-			} else {
-				values.put(name, JSONEncoder.encode(value));
+			if (value != null) {
+				if (String.class == fieldType) {
+					values.put(name, (String) value);
+				} else if (URL.class == fieldType || URI.class == fieldType) {
+					values.put(name, String.valueOf(value));
+				} else if (Integer.class.isAssignableFrom(fieldType)
+						|| Byte.class.isAssignableFrom(fieldType)
+						|| Short.class.isAssignableFrom(fieldType)) {
+					values.put(name, ((Number) value).intValue());
+				} else if (Float.class.isAssignableFrom(fieldType)) {
+					values.put(name, (Float) value);
+				} else if (Double.class.isAssignableFrom(fieldType)) {
+					values.put(name, (Double) value);
+				} else if (Long.class.isAssignableFrom(fieldType)) {
+					values.put(name, (Long) value);
+				} else if (Boolean.class.isAssignableFrom(fieldType)) {
+					values.put(name, ((Boolean) value) ? 1 : 0);
+				} else if (Date.class.isAssignableFrom(fieldType)) {
+					values.put(name, ((Date) value).getTime());
+				} else if (byte[].class.isAssignableFrom(fieldType)) {
+					values.put(name, (byte[]) value);
+				} else if (Enum.class.isAssignableFrom(fieldType)) {
+					values.put(name, ((Enum) value).ordinal());
+				} else {
+					values.put(name, JSONEncoder.encode(value));
+				}
 			}
 
 		}
@@ -378,64 +503,73 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 		try {
 			o = type.newInstance();
 		} catch (InstantiationException e) {
-			log.error("对象创建失败:"+type,e);
+			DebugLog.error("对象创建失败:" + type, e);
 			throw new RuntimeException(e);
 		} catch (IllegalAccessException e) {
-			log.error("对象创建失败:"+type,e);
+			DebugLog.error("对象创建失败:" + type, e);
 			throw new RuntimeException(e);
 		}
+		//query backup
+		HashMap<String, Object> cacheMap = new HashMap<String, Object>();
+		this.backupMap.put(o, cacheMap);
+		
 		for (Field field : this.fields) {
 			String name = field.getName();
 			int i = cursor.getColumnIndex(name);
 			if (i < 0) {
-				log.warn("缺少属性:"+type+"#"+name);
+				DebugLog.warn("缺少属性:" + type + "#" + name);
 				continue;
 			}
 			Class<?> fieldType = ReflectUtil.toWrapper(field.getType());
-			Object value = null;
-
-			if (String.class == fieldType) {
-				value = cursor.getString(i);
-			} else if (URL.class == fieldType) {
-				try {
-					value = new URL(cursor.getString(i));
-				} catch (MalformedURLException e) {
-					log.warn("无效URL:"+type,e);
-				}
-			} else if (URI.class == fieldType) {
-				value = URI.create(cursor.getString(i));
-			} else if (Number.class.isAssignableFrom(fieldType)) {
-				if(Float.class == fieldType ){
-					value = cursor.getFloat(i);
-				}else if(Double.class == fieldType){
-					value = cursor.getDouble(i);
-				}else if(Long.class == fieldType){
-					value = cursor.getLong(i);
-				}else {
-					value = cursor.getInt(i);
-				}
-			} else if (Boolean.class == fieldType) {
-				value = cursor.getInt(i) != 0;
-			} else if (Date.class == fieldType) {
-				value = new Date(cursor.getLong(i));
-			} else if (byte[].class == fieldType) {
-				value = cursor.getBlob(i);
-			} else if (Enum.class.isAssignableFrom(fieldType)) {
-				int ordi = cursor.getInt(i);
-				value = ReflectUtil.getEnum(ordi, fieldType);
-			} else {
-				String text = cursor.getString(i);
-				try {
-					if (text != null) {
-						value = new JSONDecoder(false).decode(text, fieldType);
-					}
-				} catch (Exception e) {
-					log.error("数据转换失败:"+type,e);
-				}
-			}
+			Object value = toObject(cursor, i, fieldType);
 			ReflectUtil.setValue(o, name, value);
+			cacheMap.put(name, value);
 		}
 		return o;
+	}
+
+	private Object toObject(Cursor cursor, int i, Class<?> fieldType) {
+		Object value = null;
+		if (String.class == fieldType) {
+			value = cursor.getString(i);
+		} else if (URL.class == fieldType) {
+			try {
+				value = new URL(cursor.getString(i));
+			} catch (MalformedURLException e) {
+				DebugLog.warn("无效URL:" + type, e);
+			}
+		} else if (URI.class == fieldType) {
+			value = URI.create(cursor.getString(i));
+		} else if (Number.class.isAssignableFrom(fieldType)) {
+			if (Float.class == fieldType) {
+				value = cursor.getFloat(i);
+			} else if (Double.class == fieldType) {
+				value = cursor.getDouble(i);
+			} else if (Long.class == fieldType) {
+				value = cursor.getLong(i);
+			} else {
+				value = cursor.getInt(i);
+			}
+		} else if (Boolean.class == fieldType) {
+			value = cursor.getInt(i) != 0;
+		} else if (Date.class == fieldType) {
+			value = new Date(cursor.getLong(i));
+		} else if (byte[].class == fieldType) {
+			value = cursor.getBlob(i);
+		} else if (Enum.class.isAssignableFrom(fieldType)) {
+			int ordi = cursor.getInt(i);
+			value = ReflectUtil.getEnum(ordi, fieldType);
+		} else {
+			String text = cursor.getString(i);
+			try {
+				if (text != null) {
+					value = new JSONDecoder(false).decode(text, fieldType);
+				}
+			} catch (Exception e) {
+				DebugLog.error("数据转换失败:" + type, e);
+			}
+		}
+		return value;
 	}
 
 	private String getCreateSQL() {
@@ -455,9 +589,16 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 			}
 			if (String.class == type) {
 				buf.append("TEXT");
+			} else if (Float.class.isAssignableFrom(type)
+					|| Double.class.isAssignableFrom(type)) {
+				buf.append("REAL");
 			} else if (Number.class.isAssignableFrom(type)
-					|| Boolean.class.isAssignableFrom(type)
+					// || Integer.class.isAssignableFrom(type)
+					// || Long.class.isAssignableFrom(type)
+					// || Byte.class.isAssignableFrom(type)
+					// || Short.class.isAssignableFrom(type)
 					|| Date.class.isAssignableFrom(type)
+					|| Boolean.class.isAssignableFrom(type)
 					|| Enum.class.isAssignableFrom(type)) {
 				buf.append("INTEGER");
 			} else if (byte[].class.isAssignableFrom(type)) {
@@ -474,113 +615,7 @@ public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 					.append('(').append(index).append(')');
 		}
 		buf.append("; ");
-		//System.out.println(buf);
+		// System.out.println(buf);
 		return buf.toString();
 	}
-
-	private static ExecutorService executorService = Executors
-			.newSingleThreadScheduledExecutor();
-
-	enum COMMAND {
-		SAVE, QUERY, UPDATE, UPDATE_CONTENT, REMOVE,SAVE_BAT,GET,GET_BY_KEY
-	}
-
-	@Override
-	public void query(final Callback<List<T>> callback, final String where,
-			final Object... selectionArgs) {
-		invoke(callback, where, selectionArgs, COMMAND.QUERY);
-	}
-
-	@Override
-	public void remove(final Callback<Boolean> callback, final Object id) {
-		invoke(callback, id, null, COMMAND.REMOVE);
-	}
-
-	@Override
-	public void save(final Callback<T> callback, final T t) {
-		invoke(callback, t, null, COMMAND.SAVE);
-	}
-	@Override
-    public void save(Callback<List<T>> callback, List<T> t) {
-	    invoke(callback, t, null, COMMAND.SAVE_BAT);
-    }
-	@Override
-	public void update(Callback<Boolean> callback, T t) {
-		invoke(callback, t, null, COMMAND.UPDATE);
-
-	}
-
-	@Override
-	public void update(Callback<Boolean> callback, ContentValues contents) {
-		invoke(callback, contents, null, COMMAND.UPDATE_CONTENT);
-
-	}
-
-	private void invoke(@SuppressWarnings("rawtypes") final Callback callback,
-			final Object arg1, final Object arg2, final COMMAND m) {
-		final Looper looper = Looper.myLooper();
-		executorService.execute(new Runnable() {
-			Object data;
-			boolean loaded;
-
-			@SuppressWarnings("unchecked")
-			@Override
-			public void run() {
-				if (loaded) {
-					callback.callback(data);
-				} else {
-					loaded = true;
-					switch (m) {
-					case SAVE:
-						data = save((T) arg1);
-						break;
-					case UPDATE:
-						data = update((T) arg1);
-						break;
-					case UPDATE_CONTENT:
-						data = update((ContentValues) arg1);
-						break;
-					case REMOVE:
-						data = remove( arg1);
-						break;
-					case QUERY:
-						data = query((String) arg1, (Object[]) arg2);
-						break;
-					case SAVE_BAT:
-					    data = new ArrayList<T>();
-					    List<T> os = (List<T>)arg1;
-					    for(T item:os){
-					        ((List<T>)data).add(save(item));
-					    }
-					    break;
-					case GET:
-						data = get( arg1);
-						break;
-					case GET_BY_KEY:
-						data = getByKey((String) arg1,arg2);
-						break;
-						
-					}
-					if (looper == null) {
-						this.run();
-					} else {
-						new Handler(looper).post(this);
-					}
-				}
-
-			}
-		});
-
-	}
-
-	@Override
-	public void get(Callback<T> receiver, Object id) {
-		invoke(receiver, id, null,COMMAND.GET );
-	}
-
-	@Override
-	public void getByKey(Callback<T> receiver, String field, Object value) {
-		invoke(receiver, field, value,COMMAND.GET_BY_KEY );
-	}
-
 }

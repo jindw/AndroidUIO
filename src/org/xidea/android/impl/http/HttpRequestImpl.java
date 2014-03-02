@@ -1,6 +1,7 @@
-package org.xidea.android.impl.io;
+package org.xidea.android.impl.http;
 
 import java.io.IOException;
+
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
@@ -8,23 +9,27 @@ import java.net.Proxy;
 import java.net.SocketAddress;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.charset.Charset;
 import java.util.Map;
 
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.Callback.Cancelable.CanceledException;
-import org.xidea.android.impl.ApplicationState;
-import org.xidea.android.impl.CommonLog;
-import org.xidea.android.impl.io.HttpInterface.HttpRequest;
-import org.xidea.android.impl.io.HttpInterface.HttpMethod;
+import org.xidea.android.impl.DebugLog;
+import org.xidea.android.impl.Network.HttpMethod;
 
+interface HttpRequest {
+	public URLConnection init(URL url, HttpMethod method,
+			Map<String, String> requestHeaders, Cancelable cancelGroup)
+			throws IOException;
 
-public class HttpRequestImpl implements HttpRequest {
+	public void postData(HttpURLConnection conn, Map<String, Object> post,
+			Cancelable cancelGroup) throws IOException;
+}
+
+class HttpRequestImpl implements HttpRequest {
 //	private static CommonLog log = CommonLog.getLog(HttpRequestImpl.class);
 	private static final int CONNECT_TIMEOUT = 30 * 1000;
 	private static final int READ_TIMEOUT = 2 * 60 * 1000;//图片
 
-	static Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
 	@Override
 	public URLConnection init(URL url, HttpMethod method,
@@ -34,14 +39,14 @@ public class HttpRequestImpl implements HttpRequest {
 			return url.openConnection();
 		}
 
-		if (CommonLog.isDebug()) {
+		if (DebugLog.isDebug()) {
 			try {
 				Thread.sleep(0);//(int) (1000 * (Math.random() * 10 + 5)/4));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
-		Proxy proxy = ApplicationState.getInstance().getProxy();
+		Proxy proxy = HttpSupport.INSTANCE.getProxy();
 		URLConnection conn = doInit(url, requestHeaders, cancelState, proxy);
 		return conn;
 	}
@@ -84,7 +89,7 @@ public class HttpRequestImpl implements HttpRequest {
 		conn.setDoOutput(true);
 		conn.setUseCaches(false);
 
-		String charset = DEFAULT_CHARSET.name();
+		String charset = HttpUtil.DEFAULT_CHARSET.name();
 		conn.setRequestProperty("Charset", charset);
 		if (mutiData != null) {
 			HttpUtil.addMultiPartPost(conn, mutiData, charset, cancelState);
@@ -102,17 +107,5 @@ public class HttpRequestImpl implements HttpRequest {
 		}
 
 	}
-//	private Map<String, Object> lockMap = new HashMap<String, Object>();
-//	private Object globalLock = new Object();
-//	@Override
-//	public Object requireLock(String host) {
-//		synchronized (globalLock) {
-//			Object lock = lockMap.get(host);
-//			if (lock == null) {
-//				lockMap.put(host, lock = new Object());
-//			}
-//			return lock;
-//		}
-//	}
 
 }

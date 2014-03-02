@@ -6,10 +6,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import org.xidea.android.impl.io.FileUtil;
-import org.xidea.android.impl.io.HttpImplementation;
-import org.xidea.android.impl.io.HttpUtil;
-import org.xidea.android.impl.io.StreamUtil;
+import org.xidea.android.impl.http.HttpSupport;
+import org.xidea.android.impl.http.HttpUtil;
+import org.xidea.android.impl.io.IOUtil;
 
 public class Main {
 
@@ -35,7 +34,7 @@ public class Main {
 		if(true){
 			
 			File path = new File("/Users/jindawei/Documents/workspace/AndroidBase/test/org/xidea/android/impl/io/Gif-1.gif");
-			byte[] data = StreamUtil.loadBytesAndClose(new FileInputStream(path));
+			byte[] data = IOUtil.loadBytesAndClose(new FileInputStream(path));
 			byte[] find = "NETSCAPE2.0".getBytes();
 			for(int i=0;i<data.length-find.length;i++){
 				boolean hit = true;
@@ -59,12 +58,12 @@ public class Main {
 			
 			return;
 		}
-		HttpImplementation http = HttpImplementation.getInstance();
+		HttpSupport http = HttpSupport.INSTANCE;
 		File cacheDir = new File("bin/cache");
 		System.out.println(cacheDir.toURI());
 		http.init(null, 10000);
 		try{
-		HttpUtil.class.getMethod("startCacheAsyn", HttpImplementation.class).invoke(null, http);
+		HttpUtil.class.getMethod("startCacheAsyn", HttpSupport.class).invoke(null, http);
 		}catch(Throwable e){}
 //		String content = http.loadText("http://www.sina.com.cn", true);
 //		//content = http.getText("http://www.sina.com.cn", true);

@@ -1,4 +1,4 @@
-package org.xidea.android.impl;
+package org.xidea.android.impl.debug;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -7,7 +7,6 @@ import java.net.URI;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-import org.apache.commons.logging.Log;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -19,20 +18,20 @@ import android.net.Uri;
 import android.util.Base64;
 
 import org.xidea.android.SQLiteMapper;
-import org.xidea.android.impl.io.HttpCacheEntry;
-import org.xidea.android.impl.io.SQLiteMapperImpl;
-import org.xidea.android.impl.io.StreamUtil;
+import org.xidea.android.UIO;
+import org.xidea.android.impl.DebugLog;
+import org.xidea.android.impl.http.HttpCacheEntry;
+import org.xidea.android.impl.io.IOUtil;
 
-public class DebugProvider extends ContentProvider {
+class DebugProvider extends ContentProvider {
 	private static final int MAX_SIZE = 40;
 
 	private SQLiteMapper<HttpCacheEntry> sqliteData = null;
-	private static Log log = CommonLog.getLog();
 	private static LinkedList<HttpInfo> httpCache = new LinkedList<DebugProvider.HttpInfo>();
 	private static Object httpCacheLock = new Object();
 
 	static boolean init() {
-		return CommonLog.isDebug();
+		return DebugLog.isDebug();
 	}
 
 	static class HttpInfo {
@@ -90,7 +89,7 @@ public class DebugProvider extends ContentProvider {
 					return new String(
 							Base64.decode(sourcePath, Base64.URL_SAFE), "UTF-8");
 				} catch (IOException e) {
-					log.error(e);
+					DebugLog.error(e);
 				}
 			}
 		}
@@ -111,8 +110,7 @@ public class DebugProvider extends ContentProvider {
 			long lastSaved = info.time;
 			Long ttl = null;
 			if (sqliteData == null) {
-				sqliteData = new SQLiteMapperImpl<HttpCacheEntry>(getContext(),
-						HttpCacheEntry.class);
+				sqliteData = UIO.getSQLiteStorage(HttpCacheEntry.class);
 			}
 			HttpCacheEntry entry = sqliteData.getByKey("uri",
 					Uri.parse(sourcePath));
@@ -127,7 +125,7 @@ public class DebugProvider extends ContentProvider {
 					content = entry.responseBody;
 				}
 				// file = HttpCacheImpl.
-				lastSaved = entry.lastSaved;
+				lastSaved = entry.lastAccess;
 				// }
 			}
 			byte[] data = null;
@@ -135,7 +133,7 @@ public class DebugProvider extends ContentProvider {
 				if (content == null) {
 					File file = info.cacheFile;
 					if (file != null && file.exists() && file.isFile()) {
-						data = StreamUtil.loadBytesAndClose(new FileInputStream(
+						data = IOUtil.loadBytesAndClose(new FileInputStream(
 								file));
 						charset = null;
 					}

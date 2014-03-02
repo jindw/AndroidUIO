@@ -1,6 +1,8 @@
 package org.xidea.android.impl.ui;
 
 
+import org.xidea.android.UIO;
+
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -13,22 +15,21 @@ import android.graphics.RectF;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 
-import org.xidea.android.DrawableFactory.DefaultDrawableFactory;
-import org.xidea.android.impl.ApplicationState;
 
-public class RoundDrawableFactory extends DefaultDrawableFactory {
-	private static final Resources RESOURCES = ApplicationState.getInstance().getApplication().getResources();
+public class BoxDrawableFactory extends org.xidea.android.impl.DefaultDrawableFactory {
+	private static final Resources RESOURCES = UIO.getApplication().getResources();
 
-	public RoundDrawableFactory(float radiusDip) {
-		this.radius = (int)dipToPixels(radiusDip);
+	public BoxDrawableFactory(float radiusDip) {
+		this.radiusX = this.radiusY = (int)dipToPixels(radiusDip);
 	}
 
 	@Override
-	public Bitmap parseResource(Bitmap bitmap) {
+	public Bitmap prepare(Bitmap bitmap) {
 		return createBoxBitmapAndCleanRaw(bitmap);
 	}
 
-	protected int radius = 0;
+	protected int radiusX = 0;
+	protected int radiusY = 0;
 	protected int shadowRadius = 0;
 	protected int shadowDx = 0;
 	protected int shadowDy = 0;
@@ -86,7 +87,7 @@ public class RoundDrawableFactory extends DefaultDrawableFactory {
 			paint.setAntiAlias(true);
 			tmpCanvas.drawARGB(0, 0, 0, 0);
 			paint.setColor(color);
-			tmpCanvas.drawRoundRect(new RectF(rect), radius, radius, paint);
+			tmpCanvas.drawRoundRect(new RectF(rect), radiusX, radiusY, paint);
 			paint.setXfermode(new PorterDuffXfermode(Mode.SRC_IN));
 			tmpCanvas.drawBitmap(bitmap, left, top, paint);
 		}
@@ -101,7 +102,7 @@ public class RoundDrawableFactory extends DefaultDrawableFactory {
 			final RectF rectF = new RectF(x, y, x + w + borderWidth * 2, y + h
 					+ borderWidth * 2);
 			paint2.setColor(borderColor);
-			tmpCanvas.drawRoundRect(rectF, radius, radius, paint2);
+			tmpCanvas.drawRoundRect(rectF, radiusX, radiusY, paint2);
 			paint2 = null;
 		}
 		bitmap.recycle();

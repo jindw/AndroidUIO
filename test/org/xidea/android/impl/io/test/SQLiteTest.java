@@ -2,12 +2,13 @@ package org.xidea.android.impl.io.test;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import org.robolectric.RobolectricTestRunner;
+import org.xidea.android.UIO;
 import org.xidea.android.SQLiteMapper;
 import org.xidea.android.SQLiteMapper.SQLiteEntry;
 import org.xidea.android.SQLiteMapper.SQLiteProperty;
-import org.xidea.android.UIO;
 
-import org.robolectric.RobolectricTestRunner;
 
 @RunWith(RobolectricTestRunner.class)
 public class SQLiteTest {

@@ -2,12 +2,12 @@ package org.xidea.android.impl.ui;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.regex.Pattern;
-
-import org.apache.commons.logging.Log;
 
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -17,18 +17,19 @@ import android.graphics.Movie;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.SparseIntArray;
+import android.view.View;
+import android.view.ViewGroup.LayoutParams;
 
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.UIO;
-import org.xidea.android.impl.CommonLog;
-import org.xidea.android.impl.io.HttpImplementation;
-import org.xidea.android.impl.io.HttpUtil;
-import org.xidea.android.impl.io.StreamUtil;
-import org.xidea.android.impl.io.HttpInterface.CachePolicy;
-import org.xidea.android.impl.io.HttpInterface.HttpMethod;
+import org.xidea.android.impl.DebugLog;
+import org.xidea.android.impl.Network.CachePolicy;
+import org.xidea.android.impl.Network.HttpMethod;
+import org.xidea.android.impl.http.HttpSupport;
+import org.xidea.android.impl.http.HttpUtil;
+import org.xidea.android.impl.io.IOUtil;
 
 public final class ImageUtil {
-	private static Log log = CommonLog.getLog();
 	private static final int IMAGE_HEADER_BUFFER = 1024 * 16;
 	public static final boolean GC_IGNORED_BITMAP = Build.VERSION.SDK_INT <= 10;
 	private static SparseIntArray bitmapRefMap = new SparseIntArray();
@@ -38,23 +39,6 @@ public final class ImageUtil {
 	private static int maxSide;
 
 	private ImageUtil() {
-	}
-
-	public static Bitmap createBitmap(String path) {
-		return createBitmap(path, -1, -1, CachePolicy.Any, null, null);
-	}
-
-	public static Bitmap createBitmap(String path, int maxWidth, int maxHeight,
-			CachePolicy policy, Cancelable cancelable, Options options) {
-		return (Bitmap) loadMedia(path, maxWidth, maxHeight, cancelable,
-				policy, options, true);
-	}
-
-	public static Bitmap createBitmap(InputStream in, int maxWidth,
-			int maxHeight, CachePolicy policy, Cancelable cancelable,
-			Options options) {
-		return (Bitmap) loadMedia(in, maxWidth, maxHeight, cancelable, policy,
-				options, true);
 	}
 
 	/**
@@ -67,11 +51,20 @@ public final class ImageUtil {
 	 * @param options
 	 * @return
 	 */
-	public static Object createMediaContent(String path, int maxWidth,
-			int maxHeight, CachePolicy policy, Cancelable cancelable,
-			Options options) {
-		return loadMedia(path, maxWidth, maxHeight, cancelable, policy,
-				options, false);
+	public static Object createMediaContent(InputStream in, View view,
+			Cancelable cancelable, Options options) {
+		LayoutParams lp = view.getLayoutParams();
+		int width = 0, height = 0;
+		if (view != null) {
+			if (lp.height == LayoutParams.WRAP_CONTENT) {
+				height = view.getHeight();
+			}
+			if (lp.width == LayoutParams.WRAP_CONTENT) {
+				width = view.getWidth();
+			}
+		}
+
+		return loadMedia(in, width, height, cancelable, options, false);
 	}
 
 	/**
@@ -82,107 +75,40 @@ public final class ImageUtil {
 	 * @param policy
 	 * @return
 	 */
-	private static Object loadMedia(Object resource, int maxWidth,
-			int maxHeight, Cancelable cancelable, CachePolicy policy,
-			Options options, boolean ignoreMovie) {
+	private static Object loadMedia(InputStream in, int maxWidth, int maxHeight,
+			Cancelable cancelable, Options options, boolean ignoreMovie) {
 		Object bm = null;
 		try {
 			if (options == null) {
 				options = new Options();
 				options.inPreferredConfig = COLOR_TYPE;
 			}
-			// format input stream
-			if (resource instanceof InputStream) {
-				resource = StreamUtil.loadBytesAndClose((InputStream) resource);
-			}
-			Object in = null;
+			in = new BufferedInputStream(in,IMAGE_HEADER_BUFFER);
+			in.mark(IMAGE_HEADER_BUFFER);
 			try {
-				in = requireSource(resource, cancelable, policy);
-				boolean isMovie;
-				if (in instanceof byte[]) {
-					isMovie = checkAndInitOptions(in, maxWidth, maxHeight,
-							options, ignoreMovie);
-				} else if (in instanceof InputStream) {
-					BufferedInputStream buf = new BufferedInputStream(
-							(InputStream) in, IMAGE_HEADER_BUFFER);
-					buf.mark(1024);
-					isMovie = checkAndInitOptions(buf, maxWidth, maxHeight,
-							options, ignoreMovie);
-					if (options.outWidth <= 0) {
-						return null;
-					}
-					try {
-						buf.reset();
-						in = buf;
-					} catch (IOException e) {
-						log.error("read over:" + e);
-						toEOFAndClose(buf);
-						in = requireSource(resource, cancelable, policy);
-					}
-				} else {
+				boolean isMovie = checkAndInitOptions(in, maxWidth, maxHeight,
+						options, ignoreMovie);
+				if (options.outWidth <= 0) {
 					return null;
 				}
-
+				in.reset();
 				bm = decodeStream(in, options, isMovie);
-			} catch (OutOfMemoryError e) {
-				log.warn(e);
-				options.inSampleSize++;
-				toEOFAndClose(in);
-				in = requireSource(resource, cancelable, policy);
-				bm = decodeStream(in, options, false);
 			} finally {
-				toEOFAndClose(in);
+				in.close();
 			}
 		} catch (Exception e) {
-			log.warn(e);
+			DebugLog.warn(e);
 			return null;
 		}
 		return bm;
 	}
 
-	private static Object requireSource(Object source, Cancelable cancelable,
-			CachePolicy policy) throws IOException {
-		if (source instanceof String) {
-			String path = (String) source;
-			if (URL_PATTERN.matcher(path).find()) {
-				HttpImplementation http = HttpImplementation.getInstance();
-				source = http.getStream(HttpUtil.parseURL(path),
-						HttpMethod.GET, null, cancelable, policy);
-			} else {
-				source = new FileInputStream(path);
-			}
-			return (InputStream) source;
-		}
-		return (byte[]) source;
-	}
-
-	private static final Object decodeStream(Object in, Options opts,
+	private static final Object decodeStream(InputStream in, Options opts,
 			boolean isMovie) {
-		if (in instanceof InputStream) {
-			if (isMovie) {
-				return Movie.decodeStream((InputStream) in);
-			}
-			return BitmapFactory.decodeStream((InputStream) in, null, opts);
-		} else if (in instanceof byte[]) {
-			byte[] data = (byte[]) in;
-			if (isMovie) {
-				return Movie.decodeByteArray(data, 0, data.length);
-			}
-			return BitmapFactory.decodeByteArray(data, 0, data.length, opts);
-		} else {
-			throw new IllegalArgumentException("byte[] and InputStream only!!");
+		if (isMovie) {
+			return Movie.decodeStream((InputStream) in);
 		}
-	}
-
-	private static final void toEOFAndClose(Object data) {
-		try {
-			if (data instanceof InputStream) {
-				InputStream in = (InputStream) data;
-				in.read();
-				in.close();
-			}
-		} catch (Exception e2) {
-		}
+		return BitmapFactory.decodeStream((InputStream) in, null, opts);
 	}
 
 	private static int getMaxSide() {
@@ -194,35 +120,31 @@ public final class ImageUtil {
 		return maxSide;
 	}
 
-	private static boolean checkAndInitOptions(Object in, int maxWidth,
+	private static boolean checkAndInitOptions(InputStream in, int maxWidth,
 			int maxHeight, Options options, boolean ignoreMovie)
 			throws IOException {
 		options.inJustDecodeBounds = true;
 		try {
 			if (!ignoreMovie) {
-				InputStream buf;
-				if (in instanceof byte[]) {
-					buf = new ByteArrayInputStream((byte[]) in);
-				} else {
-					buf = (BufferedInputStream) in;
-				}
-				buf.mark(IMAGE_HEADER_BUFFER);
-				GifDecoder gd = new GifDecoder(buf);
+				GifDecoder gd = new GifDecoder(in);
 				int width = gd.getWidth();
 				if (width > 0) {// match
 					if (options.inSampleSize <= 0) {
-						options.inSampleSize = computeSampleSize(maxWidth, maxHeight,
-								width, gd.getHeight());
+						options.inSampleSize = computeSampleSize(maxWidth,
+								maxHeight, width, gd.getHeight());
+						options.outHeight = gd.getHeight();
+						options.outWidth = width;
 					}
 					return gd.isAnimate();
-				}else{
-					buf.reset();//GIF 解析失败，尝试用android 系统自己的图像解析处理。
+				} else {
+					in.reset();// GIF 解析失败，尝试用android 系统自己的图像解析处理。
 				}
 			}
 			// long t1 = System.nanoTime();
 			if (options.inSampleSize <= 0) {
 				decodeStream(in, options, false);
-				// log.info("parse bound time:" + (System.nanoTime() - t1));
+				// DebugLog.info("parse bound time:" + (System.nanoTime() -
+				// t1));
 				options.inSampleSize = computeSampleSize(maxWidth, maxHeight,
 						options.outWidth, options.outHeight);
 			}
@@ -232,7 +154,7 @@ public final class ImageUtil {
 
 			options.inJustDecodeBounds = false;
 			// 是否允许回收数据
-			options.inInputShareable = in instanceof byte[];
+			// options.inInputShareable = in instanceof byte[];
 			options.inPurgeable = true;
 		}
 
@@ -246,7 +168,7 @@ public final class ImageUtil {
 		if (maxHeight <= 0) {
 			maxHeight = getMaxSide();
 		}
-		if (CommonLog.isDebug() && (width > 200 || height > 200)) {
+		if (DebugLog.isDebug() && (width > 200 || height > 200)) {
 			UIFacade.getInstance().shortTips(
 					"正在解码大图片(" + width + ',' + height + ")，请QA确认此处是否需要换成缩略图！");
 		}
@@ -271,7 +193,7 @@ public final class ImageUtil {
 			int count = bitmapRefMap.get(group);
 			bitmapRefMap.put(group, count + 1);
 		}
-		log.info("bitmap size:" + bitmapRefMap.size());
+		DebugLog.info("bitmap size:" + bitmapRefMap.size());
 	}
 
 	/**
@@ -293,7 +215,7 @@ public final class ImageUtil {
 			}
 		}
 		if (!bitmap.isRecycled()) {
-			bitmap.recycle();
+			// bitmap.recycle();
 		}
 	}
 }

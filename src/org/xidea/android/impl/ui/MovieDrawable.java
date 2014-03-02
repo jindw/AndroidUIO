@@ -9,7 +9,6 @@ import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 
 public class MovieDrawable extends Drawable  implements Runnable, Animatable {
-//	private static Log log = CommonUtil.getLog(MovieDrawable.class);
 	private Movie movie;
 	private long begin = SystemClock.uptimeMillis();
 	private int duration;
@@ -21,13 +20,13 @@ public class MovieDrawable extends Drawable  implements Runnable, Animatable {
 
 	@Override
 	public void draw(Canvas canvas) {
-		int ms = (int)(SystemClock.uptimeMillis()-begin)%duration;
-		//log.warn("movie:"+ms);
+		int ms = (int)(SystemClock.uptimeMillis()-begin);
+		if(duration >0){
+			ms = ms/duration;
+		}
 		movie.setTime(ms);
 		movie.draw(canvas, 0, 0);
-		if(duration >0){
-			start();
-		}
+		start();
 	}
     public void start() {
         if (!isRunning()) {
@@ -63,7 +62,6 @@ public class MovieDrawable extends Drawable  implements Runnable, Animatable {
     public int getIntrinsicHeight() {
         return movie.height();
     }
-	@Override
 	public void setColorFilter(ColorFilter cf) {
 	}
 

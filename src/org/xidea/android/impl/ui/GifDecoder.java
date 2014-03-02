@@ -2,11 +2,7 @@ package org.xidea.android.impl.ui;
 
 import java.io.*;
 
-import org.xidea.android.impl.io.StreamUtil;
-
-/**
- * 
- */
+import org.xidea.android.impl.io.IOUtil;
 
 public class GifDecoder {
 	private static byte[] GIF87 = "GIF87a".getBytes();
@@ -22,6 +18,7 @@ public class GifDecoder {
 	private int height; // full image height
 
 	private int[] gct;
+	private int gce;
 	private int currentDelay = 0; // delay in milliseconds
 	private int currentTransparentIndex; // transparent color index
 	private int[] currentColorTable;
@@ -57,15 +54,17 @@ public class GifDecoder {
 	 * @throws IOException
 	 */
 	private boolean readHeader() throws IOException {
-		if (StreamUtil.startsWith(in, GIF87)) {
-		} else if(StreamUtil.startsWith(in,  GIF89)) {
+		if(IOUtil.startsWith(in,  GIF89)) {
 			gif89 = true;
-		} else {
-			return false;
+		} else{
+			in.reset();
+			if(!IOUtil.startsWith(in, GIF87)) {
+				return false;
+			}
 		}
 		// Reads Logical Screen Descriptor
-		width = StreamUtil.readShort(in);
-		height = StreamUtil.readShort(in);
+		width = IOUtil.readShort(in);
+		height = IOUtil.readShort(in);
 		// packed fields
 		int packed = in.read();
 		boolean hasGCT = packed >= 0x80; // 1 : global color table flag
@@ -108,7 +107,7 @@ public class GifDecoder {
 			}
 			return tab;
 		} else {
-			StreamUtil.skip(in,ncolors * 3);
+			IOUtil.skip(in,ncolors * 3);
 			return null;
 		}
 	}
@@ -122,18 +121,18 @@ public class GifDecoder {
 		// read GIF file content blocks
 		while (true) {
 			int flag = in.read();
-			//System.out.println(Integer.toHexString(flag));
+//			System.out.println("flag1:"+Integer.toHexString(flag));
 			switch (flag) {
 			case 0x2C: // image separator
 				readImage();
 				break;
 			case 0x21: // extension
 				int flag2 = in.read();
-				//System.out.println("flag2:"+Integer.toHexString(flag2));
+//				System.out.println("flag2:"+Integer.toHexString(flag2));
 				switch (flag2) {
 				case 0xf9: // graphics control extension
 					readGraphicControlExt();
-					if(animate && decodeModel == DECODER_CHECK_ANIMAL_ONLY){
+					if((gce >1 ||animate) && decodeModel == DECODER_CHECK_ANIMAL_ONLY){
 						return;
 					}
 					break;
@@ -162,9 +161,10 @@ public class GifDecoder {
 	private String readApplicationExt() throws IOException {
 		int size = in.read();
 		if(decodeModel == DECODER_IMAGE){
-			return new String(StreamUtil.read(in,new byte[size], size));
+			return new String(IOUtil.read(in,new byte[size], size));
 		}else{
-			StreamUtil.skip(in,size);
+			//System.out.println(new String(IOUtil.read(in,new byte[size], size)));
+			IOUtil.skip(in,size);
 			return null;
 		}
 	}
@@ -182,11 +182,17 @@ public class GifDecoder {
 			dispose = 1; // elect to keep old image if discretionary
 		}
 		this.currentTransparency = (packed & 1) != 0;
-		this.currentDelay = StreamUtil.readShort(in) * 10; // delay in milliseconds
+		this.currentDelay = IOUtil.readShort(in) * 10; // delay in milliseconds
+		
+		
+
 		//System.out.println("delay:"+currentDelay);
 		if (currentDelay > 0) {
 			this.animate = true;
 		}
+
+		gce++;
+		System.out.println("\ngce"+ gce+ ";delay:"+currentDelay);
 		this.currentTransparentIndex = in.read(); // transparent color index
 		in.read(); // block terminator
 	}
@@ -199,7 +205,7 @@ public class GifDecoder {
 	private void skipBlocks() throws IOException {
 		int blockSize;
 		while ((blockSize = in.read()) > 0) {
-			StreamUtil.skip(in,blockSize);
+			IOUtil.skip(in,blockSize);
 		}
 	}
 
@@ -214,7 +220,7 @@ public class GifDecoder {
 		// readShort(); // py
 		// readShort(); // w
 		// readShort(); // h
-		StreamUtil.skip(in,8);
+		IOUtil.skip(in,8);
 		int packed = in.read();
 		boolean lctFlag = packed >= 0x80; // 1 - local color table flag
 		// interlace = (packed & 0x40) != 0; // 2 - interlace flag
@@ -260,7 +266,7 @@ public class GifDecoder {
 	}
 
 	public boolean isAnimate() {
-		return animate;
+		return animate || gce>1;
 	}
 
 	public boolean isGif89() {

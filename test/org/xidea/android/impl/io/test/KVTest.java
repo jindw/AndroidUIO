@@ -6,14 +6,15 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.xidea.android.KeyValueStorage;
-import org.xidea.android.UIO;
 
 import android.app.Activity;
 import android.app.Application;
 import android.content.SharedPreferences;
 
 import org.robolectric.RobolectricTestRunner;
+import org.xidea.android.UIO;
+import org.xidea.android.KeyValueStorage;
+
 
 @RunWith(RobolectricTestRunner.class)
 public class KVTest {
@@ -47,6 +48,7 @@ public class KVTest {
 		for(i=2000;i>0;i--){
 			map.get("");
 		}
+		System.out.println("key value time test");
 		int  timeUsed = (int)(System.nanoTime() - t1);
 		System.out.println(timeUsed0/1000f/1000);
 		System.out.println(timeUsed1/1000f/1000);

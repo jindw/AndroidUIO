@@ -9,9 +9,10 @@ import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
 import org.robolectric.RobolectricTestRunner;
-import org.xidea.android.Callback;
 import org.xidea.android.UIO;
+import org.xidea.android.Callback;
 import org.xidea.el.json.JSONDecoder;
+
 
 import android.widget.ImageView;
 

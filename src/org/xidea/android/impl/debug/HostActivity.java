@@ -1,4 +1,4 @@
-package org.xidea.android.impl;
+package org.xidea.android.impl.debug;
 
 import java.io.File;
 import java.io.FileInputStream;

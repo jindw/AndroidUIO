@@ -11,25 +11,22 @@ import java.io.OutputStream;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
 import org.xidea.android.Callback;
-import org.xidea.android.impl.CommonLog;
+import org.xidea.android.impl.DebugLog;
 
 class DiskLruCacheEntry {
-	private static Log log = CommonLog.getLog();
-	
 	final String key;
 	final File writingFile;
 	final File cleanFile;
-	private final DiskLruCache cache;
+	private final DiskLruCacheImpl cache;
 	private final LinkedList<PositionedInputStream> ins = new LinkedList<PositionedInputStream>();
 	
 
 	int size;
-	WriteCacheInputStream writer;
+	WritebackInputStream writer;
 
-	DiskLruCacheEntry(DiskLruCache cache, String key) {
-		File dir = cache.getDirectory();
+	DiskLruCacheEntry(DiskLruCacheImpl cache, String key) {
+		File dir = cache.directory;
 		this.cache = cache;
 		this.writingFile = new File(dir, key + ".tmp");
 		this.cleanFile = new File(dir, key);
@@ -44,7 +41,7 @@ class DiskLruCacheEntry {
 		return this.writingFile.exists();
 	}
 	void clean() throws IOException{
-		FileUtil.deleteIfExists(writingFile);
+		IOUtil.deleteIfExists(writingFile);
 	}
 
 
@@ -55,21 +52,36 @@ class DiskLruCacheEntry {
 		return new PositionedInputStream(cleanFile, ins);
 	}
 
-	public synchronized InputStream edit(InputStream in, int position,
+	/**
+	 * 
+	 * @param in
+	 * @param position
+	 * @param complete Callback<Boolean> success on read end!
+	 * @return
+	 * @throws IOException
+	 */
+	public synchronized InputStream getWritebackFilter(InputStream in, int position,
 			Callback<Boolean> complete) throws IOException {
+		if(in instanceof WritebackInputStream){
+			throw new IllegalArgumentException("input stream is a writeback input stream ");
+		}
 		if (writer == null) {
 			File file = writingFile;
+			System.out.println(writingFile);
 			if (!file.exists()) {
 				file.createNewFile();
 			}
 			if (position == 0 || position == file.length()) {
 				FileOutputStream out = new FileOutputStream(file, position > 0);
-				writer = new WriteCacheInputStream(this, in, out, complete);
+				writer = new WritebackInputStream(this, in, out, complete);
 				return writer;
 			}else{
+				//TODO: 断点续传
 				file.delete();
 				writer = null;
 			}
+		}else{
+			
 		}
 		complete.callback(false);
 		return null;
@@ -82,7 +94,7 @@ class DiskLruCacheEntry {
 				try {
 					in.readToCache();
 				} catch (IOException e) {
-					log.warn(e);
+					DebugLog.warn(e);
 				}
 			}
 			File writingFile = this.writingFile;
@@ -95,20 +107,19 @@ class DiskLruCacheEntry {
 				try {
 					cache.editEnd(this,success);
 				} catch (IOException e) {
-					log.warn("更新索引失败",e);
+					DebugLog.warn("更新索引失败",e);
 				}
 			}
 		}
 	}
 
-	static final class WriteCacheInputStream extends FilterInputStream {
-		private static final byte[] VOID_BUF = new byte[1];
+	static final class WritebackInputStream extends FilterInputStream {
 		private Callback<Boolean> callback;
 		private OutputStream out;
 		boolean done;
 		private DiskLruCacheEntry entry;
 
-		public WriteCacheInputStream(DiskLruCacheEntry entry, InputStream in,
+		public WritebackInputStream(DiskLruCacheEntry entry, InputStream in,
 				OutputStream out, Callback<Boolean> complete)
 				throws IOException {
 			super(in);
@@ -153,7 +164,8 @@ class DiskLruCacheEntry {
 			try {
 				try {
 					if (!done) {
-						this.read(VOID_BUF);
+						byte[] buf = new byte[4];
+						this.read(buf);
 					}
 				} finally {
 					this.readEnd(false);
@@ -167,7 +179,7 @@ class DiskLruCacheEntry {
 			try {
 				out.close();
 			} catch (Throwable e) {
-				log.warn(e);
+				DebugLog.warn(e);
 			}
 			out = null;// has error
 		}
@@ -182,8 +194,8 @@ class DiskLruCacheEntry {
 		public synchronized long skip(long byteCount) throws IOException {
 			int c;
 			int left = (int) byteCount;
-			byte[] buf = new byte[Math.max(left, 1024)];
-			while ((c = _read(buf, 0, left)) >= 0) {
+			byte[] buf = new byte[left>1024?1024:left];
+			while ((c = _read(buf, 0, Math.min(left, 1024))) >= 0) {
 				left -= c;
 			}
 			return byteCount - left;
@@ -191,7 +203,7 @@ class DiskLruCacheEntry {
 
 		@Override
 		public synchronized int read() throws IOException {
-			byte[] buf = VOID_BUF;
+			byte[] buf = new byte[1];
 			int c;
 			while ((c = _read(buf, 0, 1)) == 0)
 				;

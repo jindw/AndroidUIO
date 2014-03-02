@@ -1,23 +1,20 @@
-package org.xidea.android.impl.io;
+package org.xidea.android.impl;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
+import java.net.Proxy;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.Map;
 
 import org.xidea.android.Callback;
 import org.xidea.android.Callback.Cancelable;
+import org.xidea.android.impl.http.HttpSupport;
 
 /**
- * @see HttpImplementation
+ * @see HttpSupport
  * @author jindawei
- *
+ * 
  */
-public interface HttpInterface {
+public interface Network {
 
 	/**
 	 * 发起异步get请求，callback也将在发起线程执行（如果是ui线程发起的调换用，callback将在ui线程回调，可以直接操作ui）
@@ -32,13 +29,10 @@ public interface HttpInterface {
 	 * 
 	 * @param callback
 	 * @param url
-	 * @param mutipart
+	 * @param postParams
 	 */
 	public Cancelable post(Callback<? extends Object> callback, String url,
-			String key, File mutipart);
-
-	public Cancelable post(Callback<? extends Object> callback, String url,
-			String key, InputStream mutipart);
+			Map<String, Object> postParams);
 
 	public Cancelable dispatchRequest(AsynTask task);
 
@@ -50,10 +44,6 @@ public interface HttpInterface {
 
 	public abstract InputStream loadCacheStream(String url);
 
-	public int pause(Object group);
-	public int resume(Object group);
-	public int cancel(Object group);
-
 	public abstract void setRequestHeader(String key, String value);
 
 	public abstract String getRequestHeader(String key);
@@ -64,53 +54,22 @@ public interface HttpInterface {
 
 	public abstract void setStatistics(NetworkStatistics networkStatistics);
 
-	public interface HttpRequest {
-		public URLConnection init(URL url, HttpMethod method,
-				Map<String, String> requestHeaders, Cancelable cancelGroup)
-				throws IOException;
+	public boolean isWifiConnected();
 
-		public void postData(HttpURLConnection conn, Map<String, Object> post,
-				Cancelable cancelGroup) throws IOException;
-	}
-	public interface HttpCache {
-		public HttpCacheEntry require(URI url, HttpMethod method,
-				Map<String, String> requestHeaders);
+	public boolean isInternetConnected();
 
-		public InputStream getInputStream(HttpCacheEntry entry)
-				throws IOException;
+	public Proxy getProxy();
 
-		public String getString(HttpCacheEntry entry) throws IOException;
+	public int getMobileGeneration();
 
-		public boolean useCache(HttpCacheEntry entry, URLConnection conn)
-				throws IOException;
+	public void addWifiCallback(Callback<Boolean> callback);
 
-		public InputStream saveResult(HttpCacheEntry entry, URLConnection conn,
-				Cancelable cancelState, long timeStart) throws IOException;
+	public boolean removeWifiCallback(Callback<Boolean> callback);
 
-		public void addCacheHeaders(HttpCacheEntry entry, URLConnection conn)
-				throws IOException;
-	}
-	public interface AsynTask extends Cancelable{
+	public void addConnectedCallback(Callback<Boolean> callback);
 
-		void execute(Object result);
-		void error(Throwable e);
-		void complete();
-		
-		
-		URL getURL();
-		long getCreateTime();
-		long getStartTime();
-		int getTimeout();
-		
-		Callback<? extends Object> getCallback();
-		Object requireLock();
-		void onStart();
-		Object load(CachePolicy cachePolicy);
-		boolean hitGroup(Object group);
-		void interrupt();
-	}
+	public boolean removeConnectedCallback(Callback<Boolean> callback);
 
-	
 	public interface NetworkStatistics {
 
 		public void onHttpWaitDuration(URL path, long time);

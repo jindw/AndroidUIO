@@ -1,4 +1,5 @@
 package org.xidea.android;
+
 /**
  * 通用回掉接口
  * @author jindawei
@@ -27,7 +28,6 @@ public interface Callback<ResultType> {
 	public interface Cancelable{
 		void cancel();
 		boolean isCanceled();
-		void add(Cancelable sub);
 		public class CanceledException extends RuntimeException{
 			private static final long serialVersionUID = 1L;
 		}
@@ -56,37 +56,42 @@ public interface Callback<ResultType> {
 	}
 	public interface CacheCallback<ResultType> extends Callback<ResultType> {
 		/**
+		 * 当网络请求返回后回掉，如果数据相对缓存数据没有变化，则newData为空，否则为新数据
+		 * @param newData 更新数据（如果数据相对缓存没有变化，该方法依然被调用，但是其值为null）
+		 */
+		public boolean cache(ResultType newData);
+		/**
 		 * 获取缓存数据后立即回掉，如果没有有效缓存，cacheData 而我null
 		 * @param cacheData
 		 */
 		public void callback(ResultType cacheData);
-		/**
-		 * 当网络请求返回后回掉，如果数据相对缓存数据没有变化，则newData为空，否则为新数据
-		 * @param newData 更新数据（如果数据相对缓存没有变化，该方法依然被调用，但是其值为null）
-		 */
-		public void update(ResultType newData);
 	}
 
-//	public abstract class SimpleCallback<RawType,ResultType> implements PrepareCallback<RawType, ResultType>{
-//		private ResultType result;
-//		protected abstract void callback(ResultType result, Throwable throwable);
-//		
-//		@Override
-//		public void error(Throwable ex, boolean callbackError) {
-//			callback(result,ex);
-//		}
-//
-//		@Override
-//		public Object prepare(RawType rawData) {
-//			return rawData;
-//		}
-//
-//		@Override
-//		public void callback(ResultType result) {
-//			this.result = result;
-//			callback(result,null);
-//		}
-//	}
+	/**
+	 * 支持进度的回调接口
+	 *
+	 * @param <ResultType>
+	 */
+	public interface ProgressCallback<ResultType> extends Callback<ResultType> {
+
+		/**
+		 * 进度回调方法
+		 * @param total
+		 * @param current
+		 */
+		void onLoading(long total, long current);
+
+		/**
+		 * 任务被取消时，回调该接口
+		 */
+		void onCancelled();
+
+		/**
+		 * 下载文件时文件保存的路径和文件名
+		 * @return
+		 */
+		public String getSavePath();
+	}
 
 }
 

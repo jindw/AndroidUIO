@@ -44,7 +44,7 @@ import java.lang.annotation.Target;
  * //也可以偷懒
  * globalSetting.setCacheLength(65536).setCacheEnable(false)
  * </code></pre>
- * @see org.xidea.android.impl.io.KeyValueStorageImpl
+ * @see org.xidea.android.impl.io.KeyValueProxyImpl
  * @author jindawei
  *
  */
@@ -63,6 +63,12 @@ public interface KeyValueStorage<T extends KeyValueStorage<T>> {
 	 * @hide
 	 */
 	public void commit();
+	/**
+	 * 数据重置（删除存储数据，一切从默认开始）
+	 * 
+	 * @hide
+	 */
+	public T reset();
 	
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.TYPE)
@@ -88,7 +94,7 @@ public interface KeyValueStorage<T extends KeyValueStorage<T>> {
 		 * 如非默认值null，可具有更高优先级，其值可覆盖value设置。
 		 * @return
 		 */
-		String jsonValue() default "null";
+		String jsonValue() default "";
 	}
 
 }

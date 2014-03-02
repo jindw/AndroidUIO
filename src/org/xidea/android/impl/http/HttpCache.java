@@ -1,4 +1,4 @@
-package org.xidea.android.impl.io;
+package org.xidea.android.impl.http;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -8,6 +8,8 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -19,39 +21,63 @@ import java.util.TimeZone;
 import org.xidea.el.json.JSONEncoder;
 
 import android.content.ContentValues;
+import android.util.Base64;
 
 import org.xidea.android.Callback;
 import org.xidea.android.SQLiteMapper;
-import org.xidea.android.impl.ApplicationState;
-import org.xidea.android.impl.CommonLog;
+import org.xidea.android.UIO;
+import org.xidea.android.impl.DebugLog;
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.io.HttpInterface.HttpCache;
-import org.xidea.android.impl.io.HttpInterface.HttpMethod;
-import org.xidea.android.impl.io.HttpInterface.NetworkStatistics;
+import org.xidea.android.impl.Network.HttpMethod;
+import org.xidea.android.impl.Network.NetworkStatistics;
+import org.xidea.android.impl.io.DiskLruCache;
+import org.xidea.android.impl.io.StorageFactory;
+import org.xidea.android.impl.io.IOUtil;
 
-public class HttpCacheImpl implements HttpCache {
-	private static CommonLog log = CommonLog.getLog();
 
-	private static final int VERSION = 20120316;
+
+public interface HttpCache {
+	public HttpCacheEntry require(URI url);
+
+	public InputStream getStream(HttpCacheEntry entry)
+			throws IOException;
+	
+	public String getText(HttpCacheEntry entry) throws IOException;
+
+	public File getFile(HttpCacheEntry entry)
+			throws IOException;
+
+	/**
+	 * 需要同时考虑文件被删除的情况
+	 */
+	public boolean hasCache(HttpCacheEntry entry) ;
+	public boolean useCache(HttpCacheEntry entry, URLConnection conn)
+			throws IOException;
+
+	public void removeCache(String uri) ;
+	public void updateCache(String uri,String content) ;
+	
+	public InputStream getWritebackStream(HttpCacheEntry entry, URLConnection conn,
+			Cancelable cancelState, long timeStart) throws IOException;
+
+	public void addCacheHeaders(HttpCacheEntry entry, URLConnection conn)
+			throws IOException;
+}
+class HttpCacheImpl implements HttpCache {
+
 	private static final int MAX_COUNT = 1024 * 2;
 
 	private DiskLruCache cache;
 	private SQLiteMapper<HttpCacheEntry> mapper;
 	private Object lock = new Object();
 
-	public HttpCacheImpl(File dir, int maxCacheSize) throws IOException {
-		if (!dir.exists()) {
-			dir.mkdirs();
-		}
-		cache = DiskLruCache.open(dir, VERSION, MAX_COUNT, maxCacheSize);
-		mapper = StorageFactory.INSTANCE.getSQLiteStorage(HttpCacheEntry.class,ApplicationState.getInstance().getApplication());// new
-																	// SQLiteMapperImpl<CacheEntry>(context,
-																	// CacheEntry.class);
+	public HttpCacheImpl(File dir, long maxCacheSize) throws IOException {
+		cache = StorageFactory.INSTANCE.openCache(dir,  maxCacheSize,MAX_COUNT);
+		mapper = UIO.getSQLiteStorage(HttpCacheEntry.class);// new
 	}
 
 	@Override
-	public HttpCacheEntry require(URI identityURL, HttpMethod method,
-			Map<String, String> requestHeaders) {
+	public HttpCacheEntry require(URI identityURL) {
 		HttpCacheEntry entry = null;
 		synchronized (lock) {
 			entry = mapper.getByKey("uri", identityURL);
@@ -70,8 +96,22 @@ public class HttpCacheImpl implements HttpCache {
 		return entry;
 	}
 
+
 	@Override
-	public InputStream getInputStream(HttpCacheEntry entry) throws IOException {
+	public String getText(HttpCacheEntry entry) throws IOException {
+		if (entry.responseBody == null) {
+			InputStream in = cache.get(key(entry));
+			if (in != null) {
+				return IOUtil.loadTextAndClose(in,
+						entry.charset == null ? HttpUtil.DEFAULT_CHARSET.name()
+								: entry.charset);
+			}
+		}
+		return entry.responseBody;
+	}
+
+	@Override
+	public InputStream getStream(HttpCacheEntry entry) throws IOException {
 		String key = key(entry);
 		InputStream in = cache.get(key);
 		if (in == null) {
@@ -83,25 +123,15 @@ public class HttpCacheImpl implements HttpCache {
 		}
 		return in;
 	}
-
-	@Override
-	public String getString(HttpCacheEntry entry) throws IOException {
-		if (entry.responseBody == null) {
-			InputStream in = cache.get(key(entry));
-			if (in != null) {
-				return StreamUtil.loadTextAndClose(in,
-						entry.charset == null ? HttpUtil.DEFAULT_CHARSET
-								: entry.charset);
-			}
-		}
-		return entry.responseBody;
+	public File getFile(final HttpCacheEntry entry) throws IOException {
+		return cache.getCacheFile(key(entry));
 	}
-
-	public InputStream saveResult(final HttpCacheEntry entry,
+	
+	public InputStream getWritebackStream(final HttpCacheEntry entry,
 			final URLConnection conn, Cancelable cancelState,
 			final long timeStart) throws IOException {
-		final URL url = conn.getURL();
-		final NetworkStatistics networkStatistics = HttpImplementation.getInstance()
+		URL url = conn.getURL();
+		NetworkStatistics networkStatistics = HttpSupport.INSTANCE
 				.getStatistics();
 		// log.timeStart();
 		HttpUtil.assertNotCanceled(conn, cancelState);
@@ -113,57 +143,41 @@ public class HttpCacheImpl implements HttpCache {
 		InputStream in = HttpUtil.getInputStream(conn);//conn.getInputStream();
 		// log.timeEnd("get$" + in.available() + path);
 
-		final ContentValues contents = new ContentValues();
-		contents.put("id", entry.id);
-		contents.put("contentLength", conn.getContentLength());
-		String responseHeaders = JSONEncoder.encode(conn.getHeaderFields());
-		contents.put("responseHeaders", responseHeaders);
-		if(CommonLog.isDebug()){
-			log.warn(entry.uri+"\n"+responseHeaders);
-			HashMap<String, String> map = new HashMap<String,String>(HttpImplementation.getInstance().requestHeaders);
-			map.put("Cookie", conn.getRequestProperty("Cookie"));
-			
-			contents.put("requestHeaders", JSONEncoder.encode(map));
-		}
-		// ttl
-		// TODO: max-age,no-cache.......
-		contents.put("ttl", entry.ttl = conn.getExpiration());
-		contents.put("hit", entry.hit++);
-		// etag
-		contents.put("lastModified",
-				entry.lastModified = conn.getLastModified());
-		contents.put("lastSaved", entry.lastSaved = System.currentTimeMillis());
-		contents.put("etag", entry.etag = conn.getHeaderField("ETag"));
-		String contentType = conn.getContentType();
-		contents.put("contentType", entry.contentType = contentType);
-		String charset = HttpUtil.guessCharset(conn);
-		contents.put("charset", entry.charset = charset);
+		final String charset = HttpUtil.guessCharset(conn);
 		if (charset != null) {
-			String result = StreamUtil.loadTextAndClose(in, entry.charset);
-
+			
+			String result = IOUtil.loadTextAndClose(in, entry.charset);
+			
 			networkStatistics.onHttpNetworkDuration(url,
 					System.currentTimeMillis() - timeStart);
 			// log.timeEnd("read" + path);
-			contents.put("responseBody", entry.responseBody = result);
 			try{
-				mapper.update(contents);
+				initEntry(entry, conn,charset);
+				entry.responseBody = result;
+				mapper.update(entry);
 			}catch(Exception e){
-				log.warn(e);
+				DebugLog.warn(e);
 			}
 			return null;
 		} else {
-			contents.put("responseBody", entry.responseBody = null);
-			return cache.edit(in, key(entry),0,new Callback<Boolean>() {
+			entry.responseBody = null;
+			return cache.getWritebackFilter(in, key(entry),0,new Callback<Boolean>() {
 				@Override
 				public void callback(Boolean success) {
 						if (success) {
+
+							URL url = conn.getURL();
+							final NetworkStatistics networkStatistics = HttpSupport.INSTANCE
+									.getStatistics();
 							networkStatistics.onHttpNetworkDuration(url,
 									System.currentTimeMillis() - timeStart);
 							// log.timeEnd("read" + path);
 							try {
-								mapper.update(contents);
+								initEntry(entry, conn,charset);
+								entry.responseBody = null;
+								mapper.update(entry);
 							} catch (Exception e) {
-								log.warn(e);
+								DebugLog.warn(e);
 							}
 						} else {
 						}
@@ -176,6 +190,30 @@ public class HttpCacheImpl implements HttpCache {
 				}
 			});
 		}
+	}
+
+	private void initEntry(final HttpCacheEntry entry,
+			final URLConnection conn,String charset) {
+		entry.contentLength =  conn.getContentLength();
+		entry.responseHeaders = JSONEncoder.encode(conn.getHeaderFields());
+		if(DebugLog.isDebug()){
+			DebugLog.warn(entry.uri+"\n"+entry.responseHeaders);
+			HashMap<String, String> map = new HashMap<String,String>(HttpSupport.INSTANCE.requestHeaders);
+			map.put("Cookie", conn.getRequestProperty("Cookie"));
+			
+			entry.requestHeaders = JSONEncoder.encode(map);
+		}
+		// ttl
+		// TODO: max-age,no-cache.......
+		entry.ttl = conn.getExpiration();
+		entry.hit++;
+		// etag
+		entry.lastModified = conn.getLastModified();
+		entry.lastAccess = System.currentTimeMillis();
+		entry.etag = conn.getHeaderField("ETag");
+		String contentType = conn.getContentType();
+		entry.contentType = contentType;
+		entry.charset = charset;
 	}
 
 	public boolean hasCache(HttpCacheEntry entry) {
@@ -198,7 +236,7 @@ public class HttpCacheImpl implements HttpCache {
 				return ((HttpURLConnection) conn).getResponseCode() == 304;
 			}
 		} catch (Exception e) {
-			log.error(e);
+			DebugLog.error(e);
 		}
 		return false;
 	}
@@ -229,32 +267,23 @@ public class HttpCacheImpl implements HttpCache {
 		return sdf.format(date);
 	}
 
-	public DiskLruCache startCache() {
-		return cache;
-	}
-
-	/**
-	 * @internal
-	 * @param entry
-	 * @return
-	 */
-	File getCacheFile(HttpCacheEntry entry) {
-		if (entry == null) {
-			return null;
-		}
-		String key = key(entry);
-		return new File(cache.getDirectory(), key);
-	}
 
 	private String key(HttpCacheEntry entry) {
 		String path = entry.uri.getPath();
-		return entry.id + "_" + path.substring(path.lastIndexOf('/') + 1);
+		try {
+			MessageDigest md5 = MessageDigest.getInstance("MD5");
+			byte[] data = md5.digest(path.getBytes("UTF-8"));
+			path = Base64.encodeToString(data, Base64.NO_WRAP)+path.substring(path.lastIndexOf('/') + 1);
+		} catch (Exception e) {
+		}
+		return path.replaceAll("[^\\w-\\.]", "");
 	}
 
 	public void removeCache(String uri) {
 		try {
 			HttpCacheEntry entry = mapper.getByKey("uri", uri);
 			if (entry != null) {
+				entry.responseBody = null;
 				mapper.remove(entry);
 				if (cache != null) {
 					cache.remove(key(entry));

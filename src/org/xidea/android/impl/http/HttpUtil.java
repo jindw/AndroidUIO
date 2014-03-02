@@ -1,4 +1,4 @@
-package org.xidea.android.impl.io;
+package org.xidea.android.impl.http;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -13,6 +13,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -20,14 +21,13 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import org.apache.commons.logging.Log;
 import org.xidea.android.Callback;
 import org.xidea.android.Callback.Cancelable.CanceledException;
 import org.xidea.android.Callback.PrepareCallback;
-import org.xidea.android.impl.ApplicationState;
-import org.xidea.android.impl.CommonLog;
+import org.xidea.android.UIO;
+import org.xidea.android.impl.DebugLog;
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.io.HttpInterface.NetworkStatistics;
+import org.xidea.android.impl.Network.NetworkStatistics;
 import org.xidea.android.impl.ui.UIFacade;
 import org.xidea.el.ExpressionSyntaxException;
 import org.xidea.el.impl.ReflectUtil;
@@ -37,27 +37,29 @@ import android.os.Handler;
 import android.os.Looper;
 
 public final class HttpUtil {
-	private static Log log = CommonLog.getLog();
 
+	static Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 	private static final String ANDROID_ASSET = "/android_asset/";
 	private static byte[] END_BYTES = "\r\n".getBytes();
 	private static byte[] TWO_HYPENS_BYTES = "--".getBytes();
 	private static byte[] BOUNDARY_PREFIX_BYTES = "--------7da3d81520810"
 			.getBytes();
-	static final String DEFAULT_CHARSET = "UTF-8";
+//	static final String DEFAULT_CHARSET = "UTF-8";
 	private static final JSONDecoder JSON_DECODER = new JSONDecoder(false);
 	static Pattern CHARSET = Pattern.compile(".*?;\\s*charset=([\\w\\-]+).*?");
 	static Pattern UTF8_DEFAULT_CONTENT_TYPE = Pattern
 			.compile("^(?:application\\/json|text\\/json)");
+	static Pattern STRING_CONTENT_TYPE = Pattern
+			.compile("^(?:application\\/os-stream|image\\/.*)");
 	static Pattern TEXT_CONTENT_TYPE = Pattern.compile("^text\\/.*");
 	
 
 	private static HashMap<Type, Type[]> callbackTypeMap = new HashMap<Type, Type[]>();
-	static void startCacheAsyn(final HttpImplementation impl) {
+	static void startCacheAsyn(final HttpSupport impl) {
 		new Thread() {
 			public void run() {
 				impl.initCache();
-				log.info("cache inited");
+				DebugLog.info("cache inited");
 			}
 
 		}.start();
@@ -81,10 +83,12 @@ public final class HttpUtil {
 			if(UTF8_DEFAULT_CONTENT_TYPE.matcher(contentType).find() ){
 				return "UTF-8";
 			}else if(TEXT_CONTENT_TYPE.matcher(contentType).find()){
-				return DEFAULT_CHARSET;
+				return DEFAULT_CHARSET.name();
 			}else{
 				return null;
 			}
+		}else if(STRING_CONTENT_TYPE.matcher(contentType).find()){
+			return null;
 		}
 		return charset;
 	}
@@ -147,7 +151,7 @@ public final class HttpUtil {
 			in.mark(2);
 			if (in.read() == 0x1f && in.read()  == 0x8b) {
 				in.reset();
-				log.info("try ungzip:" + conn.getURL());
+				DebugLog.info("try ungzip:" + conn.getURL());
 				in = new GZIPInputStream(in);
 			} else {
 				in.reset();
@@ -176,7 +180,7 @@ public final class HttpUtil {
 		try {
 			return new URL(path);
 		} catch (MalformedURLException e) {
-			log.warn(e);
+			DebugLog.warn(e);
 			return null;
 		}
 	}
@@ -354,7 +358,7 @@ public final class HttpUtil {
 			filename = ANDROID_ASSET + filename.substring(1);
 		}
 		if (filename.startsWith(ANDROID_ASSET)) {
-			return ApplicationState.getInstance().getApplication()
+			return UIO.getApplication()
 					.getResources().getAssets()
 					.open(filename.substring(ANDROID_ASSET.length()));
 		} else {
@@ -371,7 +375,6 @@ public final class HttpUtil {
 		}
 	}
 	public static NetworkStatistics DEFAULT_NETWORK_STATISTICS = new NetworkStatistics() {
-		private final Log log = CommonLog.getLog();
 
 		@Override
 		public void onHttpWaitDuration(URL path, long time) {
@@ -422,7 +425,7 @@ public final class HttpUtil {
 
 		@Override
 		public void onRedirectOut(String domain) {
-			log.info("RedirectOut:"+  domain);
+			DebugLog.info("RedirectOut:"+  domain);
 		}
 
 		private void logException(URL path, String string, Throwable exception) {
@@ -438,15 +441,15 @@ public final class HttpUtil {
 		}
 		if(type == String.class){
 			String text = (String)source;
-			boolean isDebug = CommonLog.isDebug();
+			boolean isDebug = DebugLog.isDebug();
 			if(isDebug && text.startsWith("array(")){
 				text  = "数据异常，请检查后端php是否在调试数据："+text;
 			}else if(isDebug && text.startsWith("<")){
 				text = text.replaceAll("(<.*)[\\s\\S]*(<title>.*)?[\\s\\S]*","$1...$2...");
 			} else{
-				return HttpUtil.transform(text, requiredTye);
+				return JSON_DECODER.decodeObject(text, requiredTye);
 			}
-			log.warn(text);
+			DebugLog.warn(text);
 			throw new ExpressionSyntaxException("无效JSON表达式："+text);
 		}else{
 			return JSON_DECODER.transform(source, requiredTye);

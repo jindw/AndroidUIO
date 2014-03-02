@@ -3,7 +3,7 @@ package org.xidea.android.impl.ui;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.xidea.android.impl.io.StreamUtil;
+import org.xidea.android.impl.io.IOUtil;
 
 public class PNGDecoder {
 	private static final byte[] SIGNATURE= { (byte)137, 'P','N','G' ,13 ,10 ,26, 10};
@@ -12,10 +12,10 @@ public class PNGDecoder {
 	private int height; // full image height
 
 	public PNGDecoder(InputStream in) throws IOException{
-		if(StreamUtil.startsWith(in, SIGNATURE)){
-			if(StreamUtil.startsWith(in, IHDR)){
-				this.width = StreamUtil.readInt(in);
-				this.height = StreamUtil.readInt(in);
+		if(IOUtil.startsWith(in, SIGNATURE)){
+			if(IOUtil.startsWith(in, IHDR)){
+				this.width = IOUtil.readInt(in);
+				this.height = IOUtil.readInt(in);
 			}
 		}
 	}

@@ -1,5 +1,7 @@
 package org.xidea.android.impl.io;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,14 +9,12 @@ import android.content.Context;
 
 import org.xidea.android.KeyValueStorage;
 import org.xidea.android.SQLiteMapper;
-import org.xidea.android.impl.CommonLog;
+import org.xidea.android.impl.DebugLog;
 
 public class StorageFactory {
-	private static final org.apache.commons.logging.Log log = CommonLog
-			.getLog();
-	private Map<Object,Object> cache = new HashMap<Object,Object>();
+	private Map<Object, Object> cache = new HashMap<Object, Object>();
 
-	private StorageFactory() {
+	protected StorageFactory() {
 	}
 
 	/**
@@ -30,7 +30,7 @@ public class StorageFactory {
 		if (impl == null) {
 			synchronized (cache) {
 				impl = (SQLiteMapper<T>) cache.get(type);
-				if(impl == null){
+				if (impl == null) {
 					impl = new SQLiteMapperImpl<T>(application, type);
 					cache.put(type, impl);
 				}
@@ -39,12 +39,13 @@ public class StorageFactory {
 		return impl;
 
 	}
+	
 
 	@SuppressWarnings("unchecked")
-	public <T extends KeyValueStorage<?>> T getKVStroage(Class<T> type,
+	public <T extends KeyValueStorage<?>> T getKeyValueStroage(Class<T> type,
 			Context application) {
 		if (!type.isInterface()) {
-			log.error("KvStroage  必须从接口创建！"
+			DebugLog.error("getKeyValueStroage  must be a interface class！"
 					+ type);
 		}
 		T impl = (T) cache.get(type);
@@ -56,12 +57,12 @@ public class StorageFactory {
 					try {
 						KeyValueStorage.StorageKey field = type
 								.getAnnotation(KeyValueStorage.StorageKey.class);
-						key = field == null ? "default" : (String) field
-								.value();
+						key = (String) field.value();
 					} catch (Exception e) {
 						key = type.getName();
 					}
-					impl = KeyValueStorageImpl.buildKVStroage(type, application, key);
+					impl = KeyValueProxyImpl.create(type,
+							application, key);
 					cache.put(type, impl);
 				}
 			}
@@ -69,5 +70,10 @@ public class StorageFactory {
 		return impl;
 	}
 
-
+	public DiskLruCache openCache(File dir, long maxCacheSize, int maxCount) throws IOException{
+			if (!dir.exists()) {
+				dir.mkdirs();
+			}
+			return new DiskLruCacheImpl(dir, maxCacheSize, maxCount);
+	}
 }

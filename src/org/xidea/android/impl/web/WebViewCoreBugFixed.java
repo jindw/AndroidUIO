@@ -1,9 +1,10 @@
-package org.xidea.android.impl;
+package org.xidea.android.impl.web;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import org.apache.commons.logging.Log;
+import org.xidea.android.impl.DebugLog;
 
 import android.os.Build;
 import android.os.Handler;
@@ -26,7 +27,6 @@ import android.os.Message;
  * 
  */
 public class WebViewCoreBugFixed {
-	private static final Log log = CommonLog.getLog();
 	static {
 		//4.0.0 4.0.3/4.0.4 rom
 		switch (Build.VERSION.SDK_INT){
@@ -75,7 +75,7 @@ public class WebViewCoreBugFixed {
 			try {
 				handler.handleMessage(msg);
 			} catch (Exception e) {
-				log.debug("java.lang.SecurityException: No permission to modify given thread");
+				DebugLog.debug("java.lang.SecurityException: No permission to modify given thread");
 			}
 		}
 	}

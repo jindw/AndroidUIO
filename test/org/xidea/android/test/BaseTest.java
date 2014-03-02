@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.util.regex.Pattern;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,7 +35,6 @@ public class BaseTest {
 			}, true,"UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 		}
-		
 	}
 
 
@@ -49,6 +49,7 @@ public class BaseTest {
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);
 		}
-		Assert.assertTrue("日志匹配失败：\n"+pattern+"\n"+text,text.matches(pattern));
+		
+		Assert.assertTrue("日志匹配失败：\n"+pattern+"\n"+text,Pattern.compile(pattern).matcher(text).find());
 	}
 }

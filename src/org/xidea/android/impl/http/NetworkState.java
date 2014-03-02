@@ -1,4 +1,4 @@
-package org.xidea.android.impl;
+package org.xidea.android.impl.http;
 
 import java.net.Proxy;
 import java.util.ArrayList;
@@ -237,7 +237,7 @@ class NetworkState {
 				return proxy[0];
 			}
 			
-			//return (proxy = new Proxy[] { android.net.Proxy.getDefaultProxy(this.application) })[0];
+//			return (proxy = new Proxy[] { android.net.Proxy.getDefaultProxy(this.application) })[0];
 		}
 		return null;
 	}

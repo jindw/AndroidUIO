@@ -1,4 +1,4 @@
-package org.xidea.android.impl.io;
+package org.xidea.android.impl.http;
 
 import java.net.URI;
 
@@ -6,11 +6,9 @@ import java.net.URI;
 import org.xidea.android.SQLiteMapper.SQLiteProperty;
 import org.xidea.android.SQLiteMapper.SQLiteEntry;
 
-@SQLiteEntry(version=1,name="HTTP_CACHE")
+@SQLiteEntry(version=1,name="UIO_HTTP_CACHE")
 public class HttpCacheEntry {
-	@SQLiteProperty("PRIMARY KEY AUTOINCREMENT")
-	public long id;
-	@SQLiteProperty("UNIQUE NOT NULL")
+	@SQLiteProperty("PRIMARY KEY NOT NULL")
 	public URI uri;
 	@SQLiteProperty
 	public String requestHeaders;
@@ -29,7 +27,7 @@ public class HttpCacheEntry {
 	@SQLiteProperty
 	public Long lastModified;
 	@SQLiteProperty
-	public Long lastSaved;
+	public Long lastAccess;
 	@SQLiteProperty
 	public int hit;
 	@SQLiteProperty
