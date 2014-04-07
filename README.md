@@ -19,7 +19,6 @@ Description
     
     // double callback (cache first show and update on need)
     Cancelable task = UIO.get(new CacheCallback<MyClass>(){
-        //http stream will be auto parsed and mapping to you standard javabean object.
          public void callback(MyClass javabean){
             //TODO: on cache parsed!
          }
@@ -51,7 +50,7 @@ Description
  
  	  Replace the SharePreferences interface. the keyValueStroage is a dsl for typed key value stroage.
 
-    	//defined kevaluestorage
+     * defined kevaluestorage
     	===  实例代码 ====
     	public interface GlobalSetting extends KeyValueStorage<GlobalsConfig>{
     		/**
@@ -79,7 +78,8 @@ Description
       .......
       
       
-      // use the key value storage
+     * use the key value storage
+     
       //return the same instance anywhere!!
       GlobalSetting globalSetting = UIO.getKeyValueStorage(GlobalSetting.class);
       int age = globalSetting.getAge()	 
