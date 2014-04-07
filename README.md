@@ -2,6 +2,7 @@ Description
 ----
 ####Http Request && Cache && schedule automatic 
 --------
+```java
 	//the http request will be canceled after activity finished
     //and auto paused after the activity is paused when the task is pauseable.
     //and auto resume after the activity is resume again.
@@ -29,9 +30,10 @@ Description
             //TODO:....
          }
     });
-
+```
 #### Image Bind
 --------
+```java
     //the image url will auto load and parse and set as the drawable for the imageView 
     //if the image url is a animated gif,then it is show as a movie!
     UIO.bind(imageView,imageUrl);
@@ -43,6 +45,7 @@ Description
     
     //you can set the callback for the bind action(callback on image load(or cached) and bind to image view)
     UIO.bind(imageView, imageUrl,drawableFactory,fallbackResourceId,  callback);//Callback<Drawable> 
+```
 
 #### Utility
 -------
