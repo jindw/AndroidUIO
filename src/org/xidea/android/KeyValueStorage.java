@@ -11,24 +11,38 @@ import java.lang.annotation.Target;
  * 这个java接口的getter setter 会自动与 android.content.SharedPreferences 对接
  * 如果需要指定存储文件名， 可以用StorageKey 注解
  * <pre><code>
- *	===  实例代码 ====
- *	public interface GlobalsConfig extends KeyValueStorage<GlobalsConfig>{
- *		/**
- *		 * 获取一个int值，默认值为1024 
- *		 *\/
- *		@DefaultValue(1024)
- *		public int getExampleInt();
- *		/** 
- *		 * 设置一个int值，setter 可以返回 当前对象，方便连续调用， 如： 
- *		 * myStorage.beginTransaction().setExampleInt(1).setExampleBool(false).commit();
- *		 *\/
- *		public T setExampleInt(int value);
- *		/**
- *		 * 采信 jsonValue的设置，默认值为false
- *		 *\/
- *		@DefaultValue(value=1,jsonValue="false")
- *		public boolean getExampleBool();
- *	}
+ * ===  实例代码 ====
+ * public interface GlobalSetting extends KeyValueStorage<GlobalsConfig>{
+ * 	/**
+ * 	 * 设置名为age，类型为int属性，默认值为0 
+ * 	 * /
+ * 	public int getAge();
+ * 	public void setAge(int age);
+ * 	
+ * 	
+ * 	/**
+ * 	 * 设置一个默认值为1024的属性 
+ * 	 * /
+ * 	@DefaultValue(1024)
+ * 	public int getCacheLength();
+ * 	public GlobalSetting setCacheLength(int value);
+ * 	
+ * 	
+ * 	/** 
+ * 	 * 设置一个bool值，setter 可以返回 当前对象，方便连续调用， 如： 
+ * 	 * myStorage.beginTransaction().setCacheLength(65536).setCacheEnable(false).commit();
+ * 	 * /
+ * 	public boolean getCacheEnable();
+ * 	public GlobalSetting setCacheEnable(boolean b);
+ * }
+ * .......
+ * //return the same instance anywhere!!
+ * GlobalSetting globalSetting = UIO.getKeyValueStorage(GlobalSetting.class);
+ * int age = globalSetting.getAge()	 
+ * //启用事物，减少文件读写次数
+ * globalSetting.beginTransaction().setCacheLength(65536).setCacheEnable(false).commit();
+ * //也可以偷懒
+ * globalSetting.setCacheLength(65536).setCacheEnable(false)
  * </code></pre>
  * @see org.xidea.android.impl.io.KeyValueStorageImpl
  * @author jindawei
