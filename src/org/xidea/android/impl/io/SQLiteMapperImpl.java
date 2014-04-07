@@ -27,8 +27,8 @@ import android.os.Handler;
 import android.os.Looper;
 
 import org.xidea.android.Callback;
-import org.xidea.android.CommonLog;
 import org.xidea.android.SQLiteMapper;
+import org.xidea.android.impl.CommonLog;
 
 public class SQLiteMapperImpl<T> implements SQLiteMapper<T> {
 

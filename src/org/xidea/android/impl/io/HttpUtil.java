@@ -22,10 +22,10 @@ import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.logging.Log;
 import org.xidea.android.Callback;
-import org.xidea.android.CommonLog;
 import org.xidea.android.Callback.Cancelable.CanceledException;
 import org.xidea.android.Callback.PrepareCallback;
 import org.xidea.android.impl.ApplicationState;
+import org.xidea.android.impl.CommonLog;
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.impl.io.HttpInterface.NetworkStatistics;
 import org.xidea.android.impl.ui.UIFacade;

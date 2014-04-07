@@ -9,7 +9,6 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.telephony.TelephonyManager;
 
 import org.xidea.android.Callback;
-import org.xidea.android.impl.ui.ImageImplement;
 
 import java.net.Proxy;
 

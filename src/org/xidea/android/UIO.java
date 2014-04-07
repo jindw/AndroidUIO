@@ -6,7 +6,6 @@ import java.io.InputStream;
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.impl.ApplicationState;
 import org.xidea.android.impl.io.HttpImplementation;
-import org.xidea.android.impl.io.HttpInterface.AsynTask;
 import org.xidea.android.impl.io.StorageFactory;
 import org.xidea.android.impl.ui.ImageImplement;
 import org.xidea.android.impl.ui.UIFacade;

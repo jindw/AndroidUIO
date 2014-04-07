@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.xidea.android.Callback;
-import org.xidea.android.CommonLog;
+import org.xidea.android.impl.CommonLog;
 
 public final class DiskLruCache implements Closeable {
 	private static Log log = CommonLog.getLog();

@@ -1,4 +1,4 @@
-package org.xidea.android;
+package org.xidea.android.impl;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -211,6 +211,7 @@ public class CommonLog implements org.apache.commons.logging.Log {
 	}
 
 	public static boolean isDebug() {
+//		dalvik.system.VMRuntime.getRuntime().
 		try {
 			return android.os.Debug.isDebuggerConnected();
 		} catch (Throwable e) {

@@ -21,9 +21,9 @@ import org.xidea.el.json.JSONEncoder;
 import android.content.ContentValues;
 
 import org.xidea.android.Callback;
-import org.xidea.android.CommonLog;
 import org.xidea.android.SQLiteMapper;
 import org.xidea.android.impl.ApplicationState;
+import org.xidea.android.impl.CommonLog;
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.impl.io.HttpInterface.HttpCache;
 import org.xidea.android.impl.io.HttpInterface.HttpMethod;

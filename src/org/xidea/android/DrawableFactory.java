@@ -1,7 +1,7 @@
 package org.xidea.android;
 
 import org.apache.commons.logging.Log;
-import org.xidea.android.impl.ui.ImageUtil;
+import org.xidea.android.impl.CommonLog;
 import org.xidea.android.impl.ui.MovieDrawable;
 
 import android.graphics.Bitmap;
@@ -9,7 +9,6 @@ import android.graphics.Canvas;
 import android.graphics.Movie;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.Drawable.Callback;
 
 public interface DrawableFactory {
 	public Bitmap parseResource(Bitmap source);

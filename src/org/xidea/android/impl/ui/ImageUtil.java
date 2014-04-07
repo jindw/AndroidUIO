@@ -19,8 +19,8 @@ import android.util.DisplayMetrics;
 import android.util.SparseIntArray;
 
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.CommonLog;
 import org.xidea.android.UIO;
+import org.xidea.android.impl.CommonLog;
 import org.xidea.android.impl.io.HttpImplementation;
 import org.xidea.android.impl.io.HttpUtil;
 import org.xidea.android.impl.io.StreamUtil;

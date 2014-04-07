@@ -63,14 +63,12 @@ Description
     		public int getAge();
     		public void setAge(int age);
     		
-    		
     		/**
     		 * 设置一个默认值为1024的属性 
     		 */
     		@DefaultValue(1024)
     		public int getCacheLength();
     		public GlobalSetting setCacheLength(int value);
-    		
     		
     		/** 
     		 * 设置一个bool值，setter 可以返回 当前对象，方便连续调用， 如： 

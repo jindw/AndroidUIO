@@ -5,9 +5,9 @@ import java.util.Map;
 
 import android.content.Context;
 
-import org.xidea.android.CommonLog;
 import org.xidea.android.KeyValueStorage;
 import org.xidea.android.SQLiteMapper;
+import org.xidea.android.impl.CommonLog;
 
 public class StorageFactory {
 	private static final org.apache.commons.logging.Log log = CommonLog

@@ -13,8 +13,8 @@ import java.util.Map;
 
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.Callback.Cancelable.CanceledException;
-import org.xidea.android.CommonLog;
 import org.xidea.android.impl.ApplicationState;
+import org.xidea.android.impl.CommonLog;
 import org.xidea.android.impl.io.HttpInterface.HttpRequest;
 import org.xidea.android.impl.io.HttpInterface.HttpMethod;
 

@@ -18,7 +18,6 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.util.Base64;
 
-import org.xidea.android.CommonLog;
 import org.xidea.android.SQLiteMapper;
 import org.xidea.android.impl.io.HttpCacheEntry;
 import org.xidea.android.impl.io.SQLiteMapperImpl;

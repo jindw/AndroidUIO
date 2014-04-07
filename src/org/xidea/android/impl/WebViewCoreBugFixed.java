@@ -4,12 +4,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import org.apache.commons.logging.Log;
-import org.xidea.android.CommonLog;
 
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.webkit.WebView;
 
 /**
  * System Bug Fixed Utility
