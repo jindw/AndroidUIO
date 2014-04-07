@@ -51,7 +51,7 @@ Description
  	  Replace the SharePreferences interface. the keyValueStroage is a dsl for typed key value stroage.
 
      * defined kevaluestorage
---------
+
     	public interface GlobalSetting extends KeyValueStorage<GlobalsConfig>{
     		/**
     		 * 设置名为age，类型为int属性，默认值为0 
@@ -79,14 +79,16 @@ Description
       
       
      * use the key value storage
---------
-      //return the same instance anywhere!!
-      GlobalSetting globalSetting = UIO.getKeyValueStorage(GlobalSetting.class);
-      int age = globalSetting.getAge()	 
-      //启用事物，减少文件读写次数
-      globalSetting.beginTransaction().setCacheLength(65536).setCacheEnable(false).commit();
-      //也可以偷懒
-      globalSetting.setCacheLength(65536).setCacheEnable(false)
+
+         //return the same instance anywhere!!
+         GlobalSetting globalSetting = UIO.getKeyValueStorage(GlobalSetting.class);
+         int age = globalSetting.getAge()	 
+         //启用事物，减少文件读写次数
+         globalSetting.beginTransaction().setCacheLength(65536).setCacheEnable(false).commit();
+         //也可以偷懒
+         globalSetting.setCacheLength(65536).setCacheEnable(false)
+      .......
+      
       
  * SQLiteMapping
  
