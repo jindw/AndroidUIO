@@ -37,16 +37,34 @@ Description
     //if the image url is a animated gif,then it is show as a movie!
     UIO.bind(imageView,imageUrl);
     
-    //you can set the drawableFactory for the image process(such as radious, shawdown....)
-    //and set the loading drawable, fallback drawable for the action
-    UIO.bind(imageView,imageUrl,drawableFactory);
+    //you can set the drawableFactory for the image loading(getLoadingDrawable) and process(such as radious, shawdown....)
+    //and set the fallback drawable for the action
+    UIO.bind(imageView,imageUrl,drawableFactory,fallbackResourceId);
+    
+    
+    //you can set the callback for the bind action(callback on image load(or cached) and bind to image view)
+    UIO.bind(imageView, imageUrl,drawableFactory,fallbackResourceId,  callback);//Callback<Drawable> 
 
 #### Utility
 -------
  * KeyValueStorage
+ 	Replace the SharePreferences interface. the keyValueStroage is a dsl for typed key value stroage.
+ 	 
  * SQLiteMapping
- * some network state getter and listener register
+ 	a simple ormapping.
+ * Network State
+   * network state getter 
+   		UIO.isInternetConnected()
+   		UIO.isWifiConnected()
+   		UIO.getMobileGeneration()
+   * and listener register
+		UIO.Ext.addWifiCallback(Callback<Boolean> wifiAvaliableCallback);
+		UIO.Ext.addNetworkCallback(Callback<Boolean> networkAvaliableCallback);
+		UIO.Ext.removeWifiCallback && UIO.Ext.removeNetworkCallback(callback)
  * other utility 
+ 	//show toast and clear on activity destroyed
+ 	UIO.showLongTips("long show");
+ 	UIO.showShortTips("short show");
  
 #### Other Documents
 ----

@@ -20,7 +20,7 @@ public class UIFacade {
 	public void longTips(CharSequence message) {
 		showTips(message,Toast.LENGTH_LONG);
 	}
-	public void shortTips(String message) {
+	public void shortTips(CharSequence message) {
 		showTips(message,Toast.LENGTH_SHORT);
 	}
 	private void showTips(CharSequence message,int duration) {

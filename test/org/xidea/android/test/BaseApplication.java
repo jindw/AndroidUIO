@@ -8,7 +8,7 @@ public class BaseApplication extends Application{
 
 	@Override
 	public void onCreate() {
-		UIO.init(this);
+		UIO.Ext.init(this);
 		super.onCreate();
 	}
 
