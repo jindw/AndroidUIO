@@ -48,20 +48,25 @@ Description
 #### Utility
 -------
  * KeyValueStorage
+ 
  	Replace the SharePreferences interface. the keyValueStroage is a dsl for typed key value stroage.
  	 
  * SQLiteMapping
+ 
  	a simple ormapping.
  * Network State
    * network state getter 
+   
    		UIO.isInternetConnected()
    		UIO.isWifiConnected()
    		UIO.getMobileGeneration()
    * and listener register
+   
 		UIO.Ext.addWifiCallback(Callback<Boolean> wifiAvaliableCallback);
 		UIO.Ext.addNetworkCallback(Callback<Boolean> networkAvaliableCallback);
 		UIO.Ext.removeWifiCallback && UIO.Ext.removeNetworkCallback(callback)
  * other utility 
+ 
  	//show toast and clear on activity destroyed
  	UIO.showLongTips("long show");
  	UIO.showShortTips("short show");
