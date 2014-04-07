@@ -18,6 +18,7 @@ import org.xidea.android.impl.io.HttpInterface.CachePolicy;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Movie;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.widget.ImageView;
@@ -49,7 +50,7 @@ public class ImageImplement {
 		if (factory == null) {
 			factory = DEFAULT_FACTORY;
 		}
-		view.setImageDrawable(factory.getLoadingDrawable());
+		updateImageDrawable(view,factory.getLoadingDrawable());
 		final Handler handler = HttpUtil.currentHandler();
 		if (handler == null) {
 			log.warn("图片绑定必须在ui线程执行！");
@@ -119,6 +120,15 @@ public class ImageImplement {
 		}
 	}
 
+	private void updateImageDrawable(ImageView view,Drawable drawable) {
+		Drawable old = view.getDrawable();
+		if(old instanceof DrawableFactory.SafeBitmapDrawable){
+			ImageUtil.release(((BitmapDrawable)old).getBitmap());
+		}
+		
+		view.setImageDrawable(drawable);
+	}
+
 	class ImageLoaderCallback implements PrepareCallback<AsynTask, Bitmap> {
 		ImageView view;
 		String url;
@@ -157,7 +167,7 @@ public class ImageImplement {
 		void doLoad() {
 			UIFacade.getInstance().setTag(view, IMAGE_TAG_KEY, url);
 			if (cacheFailed()) {
-				view.setImageDrawable(factory.getLoadingDrawable());
+				updateImageDrawable(view,factory.getLoadingDrawable());
 				UIO.get(this, url);
 			}
 		}
@@ -250,12 +260,10 @@ public class ImageImplement {
 			Drawable drawable = null; // view.isShown();
 			if (valid) {
 				if (bitmap == null) {
-					if (!callbacked && fallbackResourceId >= 0) {
-						view.setImageResource(fallbackResourceId);
-					}
+					useFallbackResource();
 				} else {
 					drawable = factory.createDrawable(bitmap);
-					view.setImageDrawable(drawable);
+					updateImageDrawable(view,drawable);
 				}
 			}
 			if (callback != null) {
@@ -264,13 +272,18 @@ public class ImageImplement {
 			callbacked = true;
 		}
 
+		private void useFallbackResource() {
+			if (!callbacked && fallbackResourceId >= 0) {
+				updateImageDrawable(view, null);
+				view.setImageResource(fallbackResourceId);
+			}
+		}
+
 		public void error(Throwable ex, boolean callbackError) {
 			if (CommonLog.isDebug()) {
 				UIFacade.getInstance().shortTips("图片装载失败：" + ex);
 			}
-			if (!callbacked) {
-				view.setImageResource(fallbackResourceId);
-			}
+			useFallbackResource();
 			if (callback != null) {
 				callback.error(ex, callbackError);
 			} else {
@@ -304,7 +317,8 @@ public class ImageImplement {
 
 		public void release() {
 			if(ImageUtil.GC_IGNORED_BITMAP && cache instanceof Bitmap){
-				ImageUtil.release((Bitmap)cache);
+			//  不能莽撞清理
+			//	ImageUtil.release((Bitmap)cache);
 			}
 		}
 

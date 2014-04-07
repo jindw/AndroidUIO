@@ -62,7 +62,7 @@ public interface Callback<ResultType> {
 		public void callback(ResultType cacheData);
 		/**
 		 * 当网络请求返回后回掉，如果数据相对缓存数据没有变化，则newData为空，否则为新数据
-		 * @param newData
+		 * @param newData 更新数据（如果数据相对缓存没有变化，该方法依然被调用，但是其值为null）
 		 */
 		public void update(ResultType newData);
 	}

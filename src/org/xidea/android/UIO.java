@@ -87,15 +87,15 @@ public class UIO {
 		assertInit();
 		return http.loadCacheStream(url);
 	}
-	public static int pause(Object group) {
+	public static int pauseRequest(Object group) {
 		assertInit();
 		return http.pause(group);
 	}
-	public static int resume(Object group) {
+	public static int resumeRequest(Object group) {
 		assertInit();
 		return http.resume(group);
 	}
-	public static int cancel(Object group) {
+	public static int cancelRequest(Object group) {
 		assertInit();
 		return http.cancel(group);
 	}
@@ -103,11 +103,11 @@ public class UIO {
 		assertInit();
 		http.setRequestHeader(key, value);
 	}
-	public static void updateCache(String url, String content) {
+	public static void updateRequestCache(String url, String content) {
 		assertInit();
 		http.updateCache(url, content);
 	}
-	public static void removeCache(String key) {
+	public static void removeRequestCache(String key) {
 		assertInit();
 		http.removeCache(key);
 	}

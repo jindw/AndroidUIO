@@ -1,6 +1,7 @@
 package org.xidea.android;
 
 import org.apache.commons.logging.Log;
+import org.xidea.android.impl.ui.ImageUtil;
 import org.xidea.android.impl.ui.MovieDrawable;
 
 import android.graphics.Bitmap;
@@ -8,6 +9,7 @@ import android.graphics.Canvas;
 import android.graphics.Movie;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.Drawable.Callback;
 
 public interface DrawableFactory {
 	public Bitmap parseResource(Bitmap source);
@@ -73,7 +75,12 @@ public interface DrawableFactory {
 			super(UIO.getApplication()
 					.getResources(), bitmap);
 		}
-
+//		public boolean checkValid(){
+//			return super.getCallback() != null;
+//		}
+//		public final void setCallback(Callback cb) {
+//			super.setCallback(cb);
+//		}
 		public void draw(Canvas canvas) {
 			try {
 				super.draw(canvas);
