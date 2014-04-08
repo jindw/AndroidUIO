@@ -14,7 +14,7 @@ Description
          public void error(Throwable ex, boolean callbackError){
              //TODO:....
          }
-    });
+    },url);
     // and you can cancel it any time by yourself
     // task.cancel();
     
@@ -29,7 +29,17 @@ Description
          public void error(Throwable ex, boolean callbackError){
             //TODO:....
          }
-    });
+    },url);
+    
+    // post file
+    Cancelable task = UIO.post(new Callback<MyClass>(){
+         public void callback(MyClass javabean){
+            //TODO: on cache parsed!
+         }
+         public void error(Throwable ex, boolean callbackError){
+            //TODO:....
+         }
+    }, url, fileName, file);
 ```
 #### Image Bind
 --------
