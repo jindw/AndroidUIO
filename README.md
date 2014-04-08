@@ -34,7 +34,7 @@ Description
     // post file
     Cancelable task = UIO.post(new Callback<MyClass>(){
          public void callback(MyClass javabean){
-            //TODO: on cache parsed!
+            //TODO: upload success!
          }
          public void error(Throwable ex, boolean callbackError){
             //TODO:....
@@ -107,10 +107,11 @@ Description
  	a simple ormapping.
  * Network State
    * network state getter 
-   
+```java
    		* UIO.isInternetConnected()
    		* UIO.isWifiConnected()
    		* UIO.getMobileGeneration()
+```
    		
    * and listener register
    
@@ -118,11 +119,13 @@ Description
 		* UIO.Ext.addNetworkCallback(Callback<Boolean> networkAvaliableCallback);
 		* UIO.Ext.removeWifiCallback && UIO.Ext.removeNetworkCallback(callback)
  * other utility 
- 
+
+```java
   	* UIO.showLongTips("long show");	//show toast and clear on activity destroyed
  	* UIO.showShortTips("short show");
  	* UIO.get???? //others
- 
+```
+
 #### Other Documents
 ----
   * [中文版](doc/README_zh.md)
