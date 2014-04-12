@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 
 import org.xidea.android.KeyValueStorage;
@@ -37,7 +38,7 @@ public class KeyValueStorageImpl {
 				name, Activity.MODE_PRIVATE);
 		return (T) Proxy.newProxyInstance(type.getClassLoader(),
 				new Class[] { type }, new InvocationHandler() {
-					IdentityHashMap<Method, Invocable> impls = new IdentityHashMap<Method, Invocable>();
+					HashMap<String, Invocable> impls = new HashMap<String, Invocable>();
 					private Editor[] editorHolder = new Editor[1];
 
 					@Override
@@ -47,14 +48,16 @@ public class KeyValueStorageImpl {
 						if (args == null) {// alliyun bug
 							args = EMPTY_OBJECTS;
 						}
-						Invocable inv = impls.get(method);
+						String name = method.getName();
+						Invocable inv = impls.get(name);
 						if (inv == null) {
 							inv = KeyValueStorageImpl.buildInvocable(type,
 									method, preferences, editorHolder);
+							//System.err.println("create:"+method+"@"+System.identityHashCode(method)+(null==inv));
 							if (inv == null) {
 								return null;
 							} else {
-								impls.put(method, inv);
+								impls.put(name, inv);
 							}
 						}
 						Object value = inv.invoke(thiz, args);
