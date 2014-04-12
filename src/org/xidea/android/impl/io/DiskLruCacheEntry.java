@@ -12,11 +12,11 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.xidea.android.Callback;
+import org.xidea.android.impl.CommonLog;
 
 class DiskLruCacheEntry {
-	private static Log log = LogFactory.getLog(DiskLruCacheEntry.class);
+	private static Log log = CommonLog.getLog();
 	
 	final String key;
 	final File writingFile;

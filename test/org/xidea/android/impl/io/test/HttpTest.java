@@ -15,7 +15,6 @@ import org.xidea.el.json.JSONDecoder;
 
 import android.widget.ImageView;
 
-import com.google.gson.Gson;
 
 @RunWith(HttpTest.RobolectricTestRunner2.class)
 public class HttpTest {
