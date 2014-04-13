@@ -5,7 +5,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 
 import org.xidea.android.KeyValueStorage;
 import org.xidea.android.KeyValueStorage.DefaultValue;
@@ -23,8 +22,7 @@ import android.content.SharedPreferences.Editor;
 @DefaultValue
 @KeyValueStorage.StorageKey
 public class KeyValueStorageImpl {
-	private static final CommonLog log = CommonLog
-			.getLog();
+	private static final CommonLog log = CommonLog.getLog();
 	private static final JSONDecoder JSON_DECODER = new JSONDecoder(false);
 	private static final DefaultValue DEFAULT_VALUE = KeyValueStorageImpl.class
 			.getAnnotation(DefaultValue.class);
@@ -44,7 +42,7 @@ public class KeyValueStorageImpl {
 					@Override
 					public Object invoke(Object thiz, Method method,
 							Object[] args) throws Throwable {
-						//log.timeStart();
+						// log.timeStart();
 						if (args == null) {// alliyun bug
 							args = EMPTY_OBJECTS;
 						}
@@ -53,7 +51,7 @@ public class KeyValueStorageImpl {
 						if (inv == null) {
 							inv = KeyValueStorageImpl.buildInvocable(type,
 									method, preferences, editorHolder);
-							//System.err.println("create:"+method+"@"+System.identityHashCode(method)+(null==inv));
+							// System.err.println("create:"+method+"@"+System.identityHashCode(method)+(null==inv));
 							if (inv == null) {
 								return null;
 							} else {
@@ -61,7 +59,7 @@ public class KeyValueStorageImpl {
 							}
 						}
 						Object value = inv.invoke(thiz, args);
-						//log.timeEnd("keyValue."+method+value);
+						// log.timeEnd("keyValue."+method+value);
 						return value;
 					}
 				});
@@ -73,9 +71,34 @@ public class KeyValueStorageImpl {
 		Type returnType = method.getGenericReturnType();
 		String name = method.getName();
 
-		Class<?> declaringClass = method.getDeclaringClass();
 		Class<?>[] paramsTypes = method.getParameterTypes();
-		if (name.equals("toString") && paramsTypes.length == 0) {
+
+		// long t1 = System.nanoTime();
+		String key = name.replaceAll("^(?:get|set|is)([A-Z])", "$1");
+		if (!name.equals(key)) {
+			key = Character.toLowerCase(key.charAt(0)) + key.substring(1);
+			switch (name.charAt(0)) {
+			case 'g':// (name.startsWith("get")) {
+				if (paramsTypes.length == 0) {
+					return buildGetter(sharedPreferences, method, returnType,
+							paramsTypes, key);
+				}
+				break;
+			case 'i':// }else if (name.startsWith("is")) {
+				if (returnType == Boolean.class || returnType == Boolean.TYPE) {
+					name = Character.toLowerCase(name.charAt(2))
+							+ name.substring(3);
+					return buildGetter(sharedPreferences, method, returnType,
+							paramsTypes, key);
+				}
+				break;
+			default:// case 's':// } else if (name.startsWith("set")
+				if (paramsTypes.length == 1) {
+					return buildSetter(sharedPreferences, editorHolder,
+							returnType != Void.TYPE, paramsTypes[0], key);
+				}
+			}
+		} else if (name.equals("toString") && paramsTypes.length == 0) {
 			return new Invocable() {
 				String label = type.getName() + "&"
 						+ sharedPreferences.toString();
@@ -85,36 +108,15 @@ public class KeyValueStorageImpl {
 						throws Exception {
 					return label;
 				}
-			};
-		} else if (declaringClass == KeyValueStorage.class) {
-			Invocable inv = buildKeyValue(sharedPreferences, editorHolder,
-					returnType, paramsTypes);
+			};//
+		} else if (method.getDeclaringClass() == KeyValueStorage.class) {
+			Invocable inv = buildStorage3Invocable(sharedPreferences,
+					editorHolder, returnType, paramsTypes);
 			if (inv != null) {
 				return inv;
 			}
-		} else {
-			// long t1 = System.nanoTime();
-			String key = name.replaceAll("^(?:get|set|is)([A-Z])", "$1");
-			if (!name.equals(key)) {
-				key = Character.toLowerCase(key.charAt(0)) + key.substring(1);
-				if (name.startsWith("is")) {
-					if (returnType == Boolean.class
-							|| returnType == Boolean.TYPE) {
-						name = Character.toLowerCase(name.charAt(2))
-								+ name.substring(3);
-						return buildGetter(sharedPreferences, method,
-								returnType, paramsTypes, key);
-					}
-				} else if (name.startsWith("set") && paramsTypes.length == 1) {
-					return buildSetter(sharedPreferences, editorHolder,
-							returnType!= Void.TYPE,paramsTypes[0], key);
-				} else if (name.startsWith("get")) {
-					return buildGetter(sharedPreferences, method, returnType,
-							paramsTypes, key);
-				}
-			}
-
 		}
+
 		return new Invocable() {
 			@Override
 			public Object invoke(Object thiz, Object... args) throws Exception {
@@ -125,7 +127,8 @@ public class KeyValueStorageImpl {
 	}
 
 	private static Invocable buildSetter(final SharedPreferences preferences,
-			final Editor[] editorHolder,final boolean returnThis, Class<?> type, final String name) {
+			final Editor[] editorHolder, final boolean returnThis,
+			Class<?> type, final String name) {
 		final Type valueType = toWrapperType(type);
 		return new Invocable() {
 			@Override
@@ -161,9 +164,9 @@ public class KeyValueStorageImpl {
 				if (selfTransaction) {
 					editor.commit();
 				}
-				if(returnThis){
+				if (returnThis) {
 					return thiz;
-				}else{
+				} else {
 					return null;
 				}
 			}
@@ -221,14 +224,18 @@ public class KeyValueStorageImpl {
 				}
 			}
 
-			private synchronized Object defaultValue(Object[] args) {
-				if (defaultValue == null) {
-					return args[0];
-				} else if (!hasSharedValue) {
+			private Object defaultValue(Object[] args) {
+				if (!hasSharedValue) {
+					if (defaultValue == null) {
+						return args[0];
+					}
 					double value = defaultValue.value();
-					hasSharedValue = true;
-					if (valueType instanceof Class && Enum.class.isAssignableFrom((Class<?>) valueType)) {
-						sharedDefaultValue = defaultValue == null ? null : ReflectUtil.getEnum((int)value,(Class<?>) valueType);
+					if (valueType instanceof Class
+							&& Enum.class
+									.isAssignableFrom((Class<?>) valueType)) {
+						sharedDefaultValue = defaultValue == null ? null
+								: ReflectUtil.getEnum((int) value,
+										(Class<?>) valueType);
 					} else {
 						String jsonValue = defaultValue.jsonValue();
 						if ("null".equals(jsonValue)) {
@@ -246,16 +253,18 @@ public class KeyValueStorageImpl {
 						} else {
 							Object obj = JSON_DECODER.decode(jsonValue,
 									valueType);
-							if (valueType == String.class || obj == null || obj instanceof Number || obj instanceof Boolean) {
+							if (valueType == String.class || obj == null
+									|| obj instanceof Number
+									|| obj instanceof Boolean) {
 								sharedDefaultValue = obj;
 							} else {
-								hasSharedValue = false;
+								return obj;
 							}
-							return obj;
+							
 						}
 					}
+					this.hasSharedValue = true;
 				}
-
 				return sharedDefaultValue;
 			}
 		};
@@ -268,44 +277,26 @@ public class KeyValueStorageImpl {
 		return rt;
 	}
 
-	private static Invocable buildKeyValue(final SharedPreferences sp,
-			final Editor[] editorHolder, Type rt, Class<?>[] ps) {
-		synchronized (sp) {
-			if (rt == SharedPreferences.class) {// getSharedPrefrences
-				return new Invocable() {
-					@Override
-					public Object invoke(Object thiz, Object... args)
-							throws Exception {
-						return sp;
+	private static Invocable buildStorage3Invocable(final SharedPreferences sp,
+			final Editor[] editorHolder, final Type rt, final Class<?>[] ps) {
+		return new Invocable() {
+			@Override
+			public Object invoke(Object thiz, Object... args) throws Exception {
+				if (rt == SharedPreferences.class) {// getSharedPrefrences
+					return sp;
+				} else if (rt == Void.TYPE) {// ("commit".equals(name))
+					if (editorHolder[0] != null) {
+						editorHolder[0].commit();
+						editorHolder[0] = null;
 					}
-				};
-			} else if (rt == Void.TYPE && ps.length == 0) {// ("commit".equals(name))
-				// {
-				return new Invocable() {
-					@Override
-					public Object invoke(Object thiz, Object... args)
-							throws Exception {
-						if (editorHolder[0] != null) {
-							editorHolder[0].commit();
-							editorHolder[0] = null;
-						}
-						return null;
+					return null;
+				} else {// if( T "beginTransaction".equals(name))
+					if (editorHolder[0] == null) {
+						editorHolder[0] = sp.edit();
 					}
-				};
-			} else {// if
-					// ("beginTransaction".equals(name))
-					// {
-				return new Invocable() {
-					@Override
-					public Object invoke(Object thiz, Object... args)
-							throws Exception {
-						if (editorHolder[0] == null) {
-							editorHolder[0] = sp.edit();
-						}
-						return null;
-					}
-				};
+					return null;
+				}
 			}
-		}
+		};
 	}
 }

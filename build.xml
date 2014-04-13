@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="AndroidUIO" default="release">
+<project name="AndroidUIO" default="build-jar">
 
 	<!-- The local.properties file is created and updated by the 'android' tool.
          It contains the path to the SDK. It should *NOT* be checked into
@@ -76,6 +76,17 @@
 			<zipfileset src="libs/android-support-v4.jar" includes="**"/>
 			<fileset dir="${sdk.dir}/sources/android-17/">
 				<include name="android/support/v4/**" />
+			</fileset>
+		</jar>
+		<jar  destfile="bin/UIO.jar">
+			<zipfileset src="libs/JSEL.jar" includes="**"/>
+			<fileset dir="bin/classes">
+				<include name="org/xidea/android/*.java"/>
+			</fileset>
+			<fileset dir="bin/classes">
+				<include name="org/xidea/android/**" />
+				<exclude name="**/test/**" />
+				<exclude name="org/robolectric/**"/>
 			</fileset>
 		</jar>
 	</target>

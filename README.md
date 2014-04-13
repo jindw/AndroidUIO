@@ -131,4 +131,6 @@ Description
   * [中文版](doc/README_zh.md)
   * [English Version](doc/README_en.md)
 
+#### Contact
+  * QQ群： 293775669
  
