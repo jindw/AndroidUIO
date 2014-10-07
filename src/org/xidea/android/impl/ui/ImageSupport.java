@@ -49,7 +49,7 @@ public class ImageSupport {
 			factory = DEFAULT_FACTORY;
 		}
 
-		new ImageLoaderCallback(view, url, factory, callback, fallbackResource)
+		new Loader(view, url, factory, callback, fallbackResource)
 				.doLoad();
 	}
 
@@ -106,7 +106,7 @@ public class ImageSupport {
 			}
 		}
 	}
-	class ImageLoaderCallback implements PrepareCallback<File, Drawable>,
+	class Loader implements PrepareCallback<File, Drawable>,
 			CacheCallback<Drawable>, Runnable {
 		
 		final ImageView view;
@@ -124,7 +124,7 @@ public class ImageSupport {
 				STEP_CALLBACK_PREPARE = 3, STEP_CALLBACK = 4;
 		int step;// 1:prepare,2:cache,3:prepare,4,callback
 
-		ImageLoaderCallback(ImageView view, String url,
+		Loader(ImageView view, String url,
 				DrawableFactory factory, Callback<Drawable> callback, int resId) {
 			this.view = view;
 			this.factory = factory == null ? DEFAULT_FACTORY : factory;
