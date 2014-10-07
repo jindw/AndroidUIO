@@ -1,5 +1,16 @@
 Description
 ----
+   * Example Download 
+     github branches: gh-pages
+     
+   * Local Server Start
+     on branches  gh-pages 
+     
+``` sh
+     cd  web 
+     node start
+     
+
 ####Http Request && Cache && schedule automatic 
 --------
 ```java
@@ -20,10 +31,12 @@ Description
     
     // double callback (cache first show and update on need)
     Cancelable task = UIO.get(new CacheCallback<MyClass>(){
-         public void callback(MyClass javabean){
+         public boolean cache(MyClass javabean){
             //TODO: on cache parsed!
+            //return true, means cache data is accept. http request is ignored(callback is called with null arguments)
+         	return true;
          }
-         public void update(MyClass javabean){
+         public void callback(MyClass javabean){
          	//TODO: on new network result（null for not modified data）
          }
          public void error(Throwable ex, boolean callbackError){
@@ -121,8 +134,8 @@ Description
  * other utility 
 
 ```java
-  	* UIO.showLongTips("long show");	//show toast and clear on activity destroyed
- 	* UIO.showShortTips("short show");
+  	* UIO.showTips("short show");	//show toast and clear on activity destroyed
+ 	* UIO.showLongTips("long show");	
  	* UIO.get???? //others
 ```
 
