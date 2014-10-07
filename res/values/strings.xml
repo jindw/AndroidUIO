@@ -1,5 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">AndroidBase2</string>
+    <string name="app_name">AndroidTest</string>
+    <string name="test">Test!</string>
+    <string name="btn_network_test">网络访问测试</string>
+    <string name="btn_image_test">图片绑定测试</string>
+    <string name="btn_image_list">图片列表测试</string>
+    <string name="btn_network_callback">简单网络请求</string>
+    <string name="btn_network_prepare">后台预处理</string>
+    <string name="btn_network_cachecallback">缓存优先展示</string>
+    
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    
 
 </resources>

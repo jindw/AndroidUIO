@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/imageView1"
+    android:layout_width="200dp"
+    android:layout_height="200dp"
+    android:contentDescription="@null"
+    android:maxHeight="200dp"
+    android:maxWidth="200dp"
+    android:minHeight="200dp"
+    android:minWidth="200dp" />
