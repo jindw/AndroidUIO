@@ -7,10 +7,14 @@ import org.xidea.android.impl.ui.MovieDrawable;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.ColorFilter;
 import android.graphics.Movie;
+import android.graphics.drawable.Animatable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.SystemClock;
 import android.view.View;
+import android.widget.ImageView;
 
 public class DefaultDrawableFactory implements DrawableFactory{
 	public static class SafeBitmapDrawable extends BitmapDrawable {
@@ -22,7 +26,11 @@ public class DefaultDrawableFactory implements DrawableFactory{
 		}
 		public void draw(Canvas canvas) {
 			try {
-				super.draw(canvas);
+				Bitmap bitmap = this.getBitmap();
+				
+				if(!bitmap.isRecycled()){
+					super.draw(canvas);
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -60,7 +68,11 @@ public class DefaultDrawableFactory implements DrawableFactory{
 	}
 
 	public Drawable getLoadingDrawable(View view) {
-		return UIO.getApplication().getResources().getDrawable(android.R.drawable.stat_notify_sync);
+		if(view instanceof ImageView){
+			ImageView image = (ImageView) view;
+			return new LoadingDrawable(image);
+		}
+		return null;
 	}
 
 	public int getSize(Bitmap bm) {
@@ -76,6 +88,100 @@ public class DefaultDrawableFactory implements DrawableFactory{
 		}
 		return 0;
 	}
+}
+class LoadingDrawable extends Drawable  implements Runnable, Animatable {
+	private Drawable over;
+	private Drawable base;
+	private boolean running;
+	int width ;
+	int height;
+	public LoadingDrawable(ImageView view){
+		this.base = view.getDrawable();
+		
+		while(base instanceof LoadingDrawable){
+			base = ((LoadingDrawable)base).base;
+		}
+		this.over = UIO.getApplication().getResources().getDrawable(android.R.drawable.stat_notify_sync);
+		this.width = Math.max(view.getWidth(),over.getMinimumWidth());
+		this.height = Math.max(view.getHeight(),over.getMinimumHeight());
 
+		if(base != null){
+			width = Math.max(width,base.getMinimumWidth());
+			height = Math.max(width,base.getMinimumHeight());
+		}
+	}
 
+	@Override
+	public void draw(Canvas canvas) {
+		if(base!=null){
+			base.draw(canvas);
+		}
+		float degrees = ((float)System.currentTimeMillis())/1000;
+		float px = 0;
+		float py = 0;
+
+        int saveCount = canvas.save();
+		//canvas.rotate(degrees,px,py);
+		over.draw(canvas);
+		canvas.restoreToCount(saveCount);
+	}
+	
+	@Override
+	public int getIntrinsicWidth() {
+		return width;
+	}
+
+	@Override
+	public int getIntrinsicHeight() {
+		return height;
+	}
+
+	@Override
+	public int getMinimumWidth() {
+		return width;
+	}
+
+	@Override
+	public int getMinimumHeight() {
+		return height;
+	}
+
+	public void start() {
+        if (!isRunning()) {
+        	running = true;
+            run();
+        }
+    }
+    public void stop() {
+        if (isRunning()) {
+            unscheduleSelf(this);
+        }
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    public void run() {
+    	this.invalidateSelf();
+        scheduleSelf(this, SystemClock.uptimeMillis() + 100);
+    }
+
+	@Override
+	public void setAlpha(int alpha) {
+		if(base!=null)base.setAlpha(alpha);
+	}
+
+	@Override
+	public void setColorFilter(ColorFilter cf) {
+		if(base!=null)base.setColorFilter(cf);
+		
+	}
+
+	@Override
+	public int getOpacity() {
+		if(base!=null)return base.getOpacity();
+		return 0;
+	}
+	
 }

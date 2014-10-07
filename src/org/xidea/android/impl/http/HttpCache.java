@@ -269,14 +269,14 @@ class HttpCacheImpl implements HttpCache {
 
 
 	private String key(HttpCacheEntry entry) {
-		String path = entry.uri.getPath();
+		String path = entry.uri.toString();
 		try {
 			MessageDigest md5 = MessageDigest.getInstance("MD5");
 			byte[] data = md5.digest(path.getBytes("UTF-8"));
 			path = Base64.encodeToString(data, Base64.NO_WRAP)+path.substring(path.lastIndexOf('/') + 1);
 		} catch (Exception e) {
 		}
-		return path.replaceAll("[^\\w-\\.]", "");
+		return path.replaceAll("[?#].*|[^\\w-\\.]", "");
 	}
 
 	public void removeCache(String uri) {

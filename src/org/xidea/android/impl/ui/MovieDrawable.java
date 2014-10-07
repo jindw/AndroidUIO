@@ -22,11 +22,10 @@ public class MovieDrawable extends Drawable  implements Runnable, Animatable {
 	public void draw(Canvas canvas) {
 		int ms = (int)(SystemClock.uptimeMillis()-begin);
 		if(duration >0){
-			ms = ms/duration;
+			ms = ms%duration;
 		}
 		movie.setTime(ms);
 		movie.draw(canvas, 0, 0);
-		start();
 	}
     public void start() {
         if (!isRunning()) {

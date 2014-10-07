@@ -45,29 +45,16 @@ public class ImageSupport {
 	public void bind(final ImageView view, final String url,
 			DrawableFactory factory, final int fallbackResource,
 			final Callback<Drawable> callback) {
-		DebugLog.info("bind:" + url + view);
-		if (view == null || url == null || url.length() == 0) {
-			DebugLog.fatal("invalid view(" + view + ") or url(" + url + ")");
+		if (view == null) {
+			DebugLog.fatal("invalid view:" + view);
 			return;
 		}
 		if (factory == null) {
 			factory = DEFAULT_FACTORY;
 		}
-		updateImageDrawable(view, factory.getLoadingDrawable(view));
-		final Handler handler = HttpUtil.currentHandler();
-		if (handler == null) {
-			DebugLog.warn("图片绑定必须在ui线程执行！");
-			final DrawableFactory factory2 = factory;
-			view.post(new Runnable() {
-				@Override
-				public void run() {
-					bind(view, url, factory2, fallbackResource, callback);
-				}
-			});
-		} else {
-			new ImageLoaderCallback(view, url, factory, callback,
-					fallbackResource).doLoad();
-		}
+
+		new ImageLoaderCallback(view, url, factory, callback, fallbackResource)
+				.doLoad();
 	}
 
 	public void clear(Context activity) {
@@ -90,7 +77,7 @@ public class ImageSupport {
 					}
 					if (remove) {
 						info.release();
-						DebugLog.warn("remove cache: currentSize:"
+						DebugLog.warn("remove cache: url:"+info.url+"currentSize:"
 								+ currentSize);
 						it.remove();
 						currentSize -= info.size;
@@ -157,39 +144,58 @@ public class ImageSupport {
 		}
 
 		void doLoad() {
-			view.setTag(uioImageReservedId, url);
-			tryMemeryCache();
-			if (hitedMemCache == null) {
-				updateImageDrawable(view, factory.getLoadingDrawable(view));
-				currentDrawable = null;
-				UIO.get(this, url);
+			if (HttpUtil.currentHandler() == null) {
+				DebugLog.warn("post bind:" + url + " to ui thread!!");
+				view.post(new Runnable() {
+					@Override
+					public void run() {
+						doLoad();
+					}
+				});
+			} else if (url == null || url.length() == 0) {
+				DebugLog.warn("invalid url:" + url);
+				if(!useFallbackResource()){
+					view.setImageDrawable(null);
+				}
+				return;
+			} else {
+				DebugLog.debug("bind:" + url + view);
+				view.setTag(uioImageReservedId, url);
+				tryMemeryCache();
+				if (hitedMemCache == null) {
+					updateImageDrawable(view, factory.getLoadingDrawable(view));
+					currentDrawable = null;
+					UIO.get(this, url);
+				}
 			}
 		}
 
-		public void addCache(Object cache) {
+		public void addCache(String url,Object cache) {
 			if (cache != null) {
 				synchronized (queueLock) {
-					CacheInfo info = new CacheInfo(factory, cache, view);
-					queue.put(url+'#'+System.identityHashCode(factory), info);
+					CacheInfo info = new CacheInfo(url,factory, cache, view);
+					queue.put(url + '#' + System.identityHashCode(factory),
+							info);
 					int size = info.size;
 					currentSize += size;
 				}
 				if (currentSize > maxCapacity) {
-					DebugLog.warn("memmery clear on new image");
+					DebugLog.warn("memmery clear on new image ! count:"+queue.size());
 					clear(null);
 				}
 			}
 		}
+
 		private void tryMemeryCache() {
 			if (hitedMemCache == null) {
 				CacheInfo info;
 				synchronized (queueLock) {
-					info = queue.get(url+'#'+System.identityHashCode(factory));
+					info = queue.get(url + '#' + factory.hashCode());
 				}
 				if (info != null && info.cache != null
 						&& factory.equals(info.factory)) {
 					// 跳过其他判断，直接绘制内容了
-					DebugLog.info("use old image!" + url
+					DebugLog.debug("use old image!" + url
 							+ "\nqueue info:count:" + queue.size() + ";memery:"
 							+ currentSize / 1024f / 1024f + "M\n");
 					hitedMemCache = info;
@@ -231,7 +237,6 @@ public class ImageSupport {
 			return hitedMemCache != null;
 		}
 
-
 		public void callback(Drawable drawable) {
 			boolean valid = url.equals(view.getTag(uioImageReservedId));
 			if (valid) {
@@ -251,58 +256,54 @@ public class ImageSupport {
 		@Override
 		public Object prepare(File file) {
 			boolean isCachePrepare = step < STEP_CACHE;
-			if(isCachePrepare){
-				cacheFileLength =file == null ? 0:  file.length();
+			if (isCachePrepare) {
+				cacheFileLength = file == null ? 0 : file.length();
 				tryMemeryCache();
-			}else if(file != null){
-				if(cacheFileLength == file.length()){//文件大小一样就放弃更新，减少图片解码开销
+			} else if (file != null) {
+				if (cacheFileLength == file.length()) {// 文件大小一样就放弃更新，减少图片解码开销
 					return null;
 				}
 			}
 			try {
 				if (hitedMemCache == null && file != null && file.exists()) {
-					Object data = null;
-
-					data = ImageUtil.createMediaContent(new FileInputStream(
+					DebugLog.info("parse on "+(isCachePrepare?"cache:":"callback:")+file.getName());
+					Object data = ImageUtil.createMediaContent(new FileInputStream(
 							file), view, null, null);
-					Drawable result = null;
-					if(isCachePrepare){
-						tryMemeryCache();
-					}
-					if (hitedMemCache == null && data != null) {
+					if (data != null) {
 						// 只要prepare了，bitmap的控制权就自动交给了系统。
 						if (data instanceof Bitmap) {
 							final Bitmap bitmap = factory
 									.prepare((Bitmap) data);
-							addCache(bitmap);
+							addCache(url,bitmap);
 							return factory.createDrawable(bitmap);
 						} else if (data instanceof Movie) {
-							final Movie cache = factory
-									.prepare((Movie) data);
-							addCache(cache);
+							final Movie cache = factory.prepare((Movie) data);
+							addCache(url,cache);
 							return factory.createDrawable(cache);
 						} else {
 							throw new RuntimeException(
 									"unknow media type! bitmap || movie is required!!");
 						}
-					} else if (data instanceof Bitmap) {
-						((Bitmap) data).recycle();// 无主的bitmap一定要立即回收
 					}
-					return result;
+					return null;
 
 				}
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			} finally {
-				this.step = isCachePrepare ? STEP_CACHE_PREPARE:STEP_CALLBACK_PREPARE;
+				this.step = isCachePrepare ? STEP_CACHE_PREPARE
+						: STEP_CALLBACK_PREPARE;
 			}
 			return null;
 		}
 
-		private void useFallbackResource() {
-			if (currentDrawable== null && fallbackResourceId >= 0) {
+		private boolean useFallbackResource() {
+			if (currentDrawable == null && fallbackResourceId >= 0) {
 				updateImageDrawable(view, null);
 				view.setImageResource(fallbackResourceId);
+				return true;
+			}else{
+				return false;
 			}
 		}
 
@@ -324,9 +325,12 @@ public class ImageSupport {
 		final DrawableFactory factory;
 		final int size;
 		final Object cache;
+		final String url;
 		int activityMask;
+		
 
-		CacheInfo(DrawableFactory factory, Object bitmap, ImageView view) {
+		CacheInfo(String url,DrawableFactory factory, Object bitmap, ImageView view) {
+			this.url = url;
 			this.factory = factory;
 			this.cache = bitmap;
 			if (bitmap instanceof Bitmap) {

@@ -163,10 +163,11 @@ public class DebugLog {
 					text = String.valueOf(msg) + '\n' + Log.getStackTraceString(th);
 				}
 				Log.println(level, tag, text);
-				System.out.println(tag + ':' + text);
+				//System.out.println(tag + ':' + text);
 
 			}
 		} catch (Throwable e) {
+			//e.printStackTrace();
 			System.out.println(tag + "\t" + msg + "\t" + th);
 		}
 	}

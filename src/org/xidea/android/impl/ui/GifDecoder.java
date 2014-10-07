@@ -192,7 +192,7 @@ public class GifDecoder {
 		}
 
 		gce++;
-		System.out.println("\ngce"+ gce+ ";delay:"+currentDelay);
+		//System.out.println("\ngce"+ gce+ ";delay:"+currentDelay);
 		this.currentTransparentIndex = in.read(); // transparent color index
 		in.read(); // block terminator
 	}

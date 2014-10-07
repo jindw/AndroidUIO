@@ -56,10 +56,10 @@ public final class ImageUtil {
 		LayoutParams lp = view.getLayoutParams();
 		int width = 0, height = 0;
 		if (view != null) {
-			if (lp.height == LayoutParams.WRAP_CONTENT) {
+			if (lp.height != LayoutParams.WRAP_CONTENT) {
 				height = view.getHeight();
 			}
-			if (lp.width == LayoutParams.WRAP_CONTENT) {
+			if (lp.width != LayoutParams.WRAP_CONTENT) {
 				width = view.getWidth();
 			}
 		}
@@ -172,14 +172,15 @@ public final class ImageUtil {
 			UIFacade.getInstance().shortTips(
 					"正在解码大图片(" + width + ',' + height + ")，请QA确认此处是否需要换成缩略图！");
 		}
-		final float scale;
 		if (width > maxWidth || height > maxHeight) { // 防止内存溢出
-			scale = Math.max((float) width / maxWidth, (float) height
+			final float scale = Math.max((float) width / maxWidth, (float) height
 					/ maxHeight);
+			int intScale = (int) Math.ceil(scale);
+			DebugLog.info("decoder scale："+scale+"=>"+intScale);
+			return intScale;
 		} else {
-			scale = 1;
+			return 1;
 		}
-		return (int) Math.ceil(scale);
 	}
 
 	/**
@@ -193,7 +194,7 @@ public final class ImageUtil {
 			int count = bitmapRefMap.get(group);
 			bitmapRefMap.put(group, count + 1);
 		}
-		DebugLog.info("bitmap size:" + bitmapRefMap.size());
+		//DebugLog.info("bitmap size:" + bitmapRefMap.size());
 	}
 
 	/**
@@ -215,7 +216,7 @@ public final class ImageUtil {
 			}
 		}
 		if (!bitmap.isRecycled()) {
-			// bitmap.recycle();
+			//bitmap.recycle();
 		}
 	}
 }
