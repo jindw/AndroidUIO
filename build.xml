@@ -70,14 +70,10 @@
          in order to avoid having your file be overridden by tools such as "android update project"
     -->
 	<!-- version-tag: 1 -->
+	<!--
 	<import file="${sdk.dir}/tools/ant/build.xml" />
+	-->
 	<target name="build-jar">
-		<jar destfile="bin/android-support-v4.jar">
-			<zipfileset src="libs/android-support-v4.jar" includes="**"/>
-			<fileset dir="${sdk.dir}/sources/android-17/">
-				<include name="android/support/v4/**" />
-			</fileset>
-		</jar>
 		<jar  destfile="bin/UIO.jar">
 			<zipfileset src="libs/JSEL.jar" includes="**"/>
 			<fileset dir="bin/classes">
@@ -88,6 +84,7 @@
 				<exclude name="**/test/**" />
 				<exclude name="org/robolectric/**"/>
 			</fileset>
+			
 		</jar>
 	</target>
 	
