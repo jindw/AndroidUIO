@@ -14,17 +14,14 @@ import org.xidea.android.DrawableFactory;
 import org.xidea.android.UIO;
 import org.xidea.android.impl.DebugLog;
 import org.xidea.android.impl.DefaultDrawableFactory;
-import org.xidea.android.impl.Network.CachePolicy;
 import org.xidea.android.impl.http.HttpSupport;
 import org.xidea.android.impl.http.HttpUtil;
-import org.xidea.android.impl.AsynTask;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Movie;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.Handler;
 import android.widget.ImageView;
 
 public class ImageSupport {
@@ -34,7 +31,6 @@ public class ImageSupport {
 	private int coreCapacity = 2 * 1024 * 1024;// 2M
 	private int maxCapacity = 4 * 1024 * 1024;// 4M
 	private int currentSize = 0;
-	private Drawable currentDrawable;
 	private static DrawableFactory DEFAULT_FACTORY = new DefaultDrawableFactory();
 	private static int uioImageReservedId = 0xFFFFFFFF;// android.R.id.custom;
 	public static final ImageSupport INSTANCE = new ImageSupport();
@@ -110,22 +106,16 @@ public class ImageSupport {
 			}
 		}
 	}
-
-	private void updateImageDrawable(ImageView view, Drawable drawable) {
-		Drawable old = view.getDrawable();
-		if (old instanceof DefaultDrawableFactory.SafeBitmapDrawable) {
-			ImageUtil.release(((BitmapDrawable) old).getBitmap());
-		}
-		this.currentDrawable = drawable;
-		view.setImageDrawable(drawable);
-	}
-
 	class ImageLoaderCallback implements PrepareCallback<File, Drawable>,
 			CacheCallback<Drawable>, Runnable {
+		
 		final ImageView view;
 		final String url;
 		final DrawableFactory factory;
 		final Callback<Drawable> callback;
+
+		private Drawable currentDrawable;
+		
 		private long cacheFileLength = 0;
 		private CacheInfo hitedMemCache;
 		private int fallbackResourceId;
@@ -295,6 +285,17 @@ public class ImageSupport {
 						: STEP_CALLBACK_PREPARE;
 			}
 			return null;
+		}
+
+
+		private void updateImageDrawable(ImageView view, Drawable drawable) {
+			Drawable old = view.getDrawable();
+			if (old instanceof DefaultDrawableFactory.SafeBitmapDrawable) {
+				ImageUtil.release(((BitmapDrawable) old).getBitmap());
+			}
+			this.currentDrawable = drawable;
+			DebugLog.info("set drawable:"+url+""+view+drawable);
+			view.setImageDrawable(drawable);
 		}
 
 		private boolean useFallbackResource() {
