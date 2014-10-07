@@ -1,18 +1,25 @@
-Description
+Resource && Example
 ----
+
+   * Libs Download
+     http://jindw.github.io/AndroidUIO/libs/UIO.jar
+     
    * Example Download 
    
      github branches: gh-pages
      
-   * Local Server Start
+   * Local Server
    
      on branches  gh-pages 
+     
      
 ``` sh
      cd  web 
      node start
 ```
 
+Description
+----
 
 ####Http Request && Cache && schedule automatic 
 --------
