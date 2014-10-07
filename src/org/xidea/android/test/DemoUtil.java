@@ -20,16 +20,21 @@ public class DemoUtil {
 
 	private static TestServer server;
 
-
 	public static TestServer getConfig() {
 		try {
 			if (server == null) {
-				InputStream in = UIO.getApplication().getAssets().open("test-server.json");
-				if (in != null) {
-					String text = IOUtil.loadTextAndClose(in, "utf-8");
-					server = JSONDecoder.decode(text, TestServer.class);
-				}
+				InputStream in = null;
+				try {
+					in = UIO.getApplication().getAssets()
+							.open("test-server.json");
+					if (in != null) {
+						String text = IOUtil.loadTextAndClose(in, "utf-8");
+						server = JSONDecoder.decode(text, TestServer.class);
+					}
 
+				} catch (IOException e) {
+
+				}
 				in = UIO.getApplication().getAssets().open("git-server.json");
 				if (in != null) {
 					String text = IOUtil.loadTextAndClose(in, "utf-8");
@@ -41,6 +46,7 @@ public class DemoUtil {
 			throw new RuntimeException(e);
 		}
 	}
+
 	public static List<String> getImageList() {
 		String[] imgUrls = new String[] { "taiji.gif", "taiji1.jpg",
 				"taiji2.jpg", "taiji3.jpg" };
@@ -59,6 +65,6 @@ public class DemoUtil {
 	}
 
 	public static String getUserURL() {
-		return DemoUtil.getConfig().home+ "api/user.json";
+		return DemoUtil.getConfig().home + "api/user.json";
 	}
 }
