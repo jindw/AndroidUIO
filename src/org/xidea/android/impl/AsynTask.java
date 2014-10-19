@@ -11,6 +11,7 @@ import org.xidea.android.Callback;
 import org.xidea.android.Callback.CacheCallback;
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.impl.Network.CachePolicy;
+import org.xidea.android.impl.http.LoadingImpl;
 
 public interface AsynTask extends Cancelable {
 	void onStart();

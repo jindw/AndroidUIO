@@ -14,12 +14,19 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.xidea.android.Callback;
 import org.xidea.android.Callback.Cancelable.CanceledException;
@@ -44,7 +51,7 @@ public final class HttpUtil {
 	private static byte[] TWO_HYPENS_BYTES = "--".getBytes();
 	private static byte[] BOUNDARY_PREFIX_BYTES = "--------7da3d81520810"
 			.getBytes();
-//	static final String DEFAULT_CHARSET = "UTF-8";
+	// static final String DEFAULT_CHARSET = "UTF-8";
 	private static final JSONDecoder JSON_DECODER = new JSONDecoder(false);
 	static Pattern CHARSET = Pattern.compile(".*?;\\s*charset=([\\w\\-]+).*?");
 	static Pattern UTF8_DEFAULT_CONTENT_TYPE = Pattern
@@ -52,9 +59,10 @@ public final class HttpUtil {
 	static Pattern STRING_CONTENT_TYPE = Pattern
 			.compile("^(?:application\\/os-stream|image\\/.*)");
 	static Pattern TEXT_CONTENT_TYPE = Pattern.compile("^text\\/.*");
-	
 
 	private static HashMap<Type, Type[]> callbackTypeMap = new HashMap<Type, Type[]>();
+	private static SSLSocketFactory sslSocketFactory;
+
 	static void startCacheAsyn(final HttpSupport impl) {
 		new Thread() {
 			public void run() {
@@ -65,9 +73,48 @@ public final class HttpUtil {
 		}.start();
 	}
 
-	private HttpUtil(){}
+	private HttpUtil() {
+	}
+
 	static void showNetworkTips(String msg) {
 		UIFacade.getInstance().shortTips(msg);
+	}
+
+	public static void trustConnection(URLConnection conn) {
+		if (conn instanceof HttpsURLConnection) {
+			HttpsURLConnection sonn = (HttpsURLConnection) conn;
+			// Create a trust manager that does not validate certificate chains
+			if (sslSocketFactory == null) {
+				TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+					@Override
+					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+						return null;
+					}
+
+					@Override
+					public void checkClientTrusted(X509Certificate[] certs,
+							String authType) {
+					}
+
+					@Override
+					public void checkServerTrusted(X509Certificate[] certs,
+							String authType) {
+					}
+				} };
+				try {
+					SSLContext sslContext = SSLContext.getInstance("TLS");
+					sslContext.init(null, trustAllCerts, null);
+					sslSocketFactory = sslContext.getSocketFactory();
+				} catch (Throwable e) {
+					DebugLog.error(e.getMessage(), e);
+				}
+			}
+
+			if (sslSocketFactory != null) {
+				sonn.setSSLSocketFactory(sslSocketFactory);
+				sonn.setHostnameVerifier(org.apache.http.conn.ssl.SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+			}
+		}
 	}
 
 	static String guessCharset(URLConnection conn) {
@@ -80,14 +127,14 @@ public final class HttpUtil {
 		}
 		String charset = CHARSET.matcher(contentType).replaceFirst("$1");
 		if (charset.equals(contentType)) {
-			if(UTF8_DEFAULT_CONTENT_TYPE.matcher(contentType).find() ){
+			if (UTF8_DEFAULT_CONTENT_TYPE.matcher(contentType).find()) {
 				return "UTF-8";
-			}else if(TEXT_CONTENT_TYPE.matcher(contentType).find()){
+			} else if (TEXT_CONTENT_TYPE.matcher(contentType).find()) {
 				return DEFAULT_CHARSET.name();
-			}else{
+			} else {
 				return null;
 			}
-		}else if(STRING_CONTENT_TYPE.matcher(contentType).find()){
+		} else if (STRING_CONTENT_TYPE.matcher(contentType).find()) {
 			return null;
 		}
 		return charset;
@@ -125,21 +172,21 @@ public final class HttpUtil {
 	private static Pattern DOUBLE_SPLIT_REGEXP = Pattern
 			.compile("([^:])\\/\\/+");
 
-//	private static Pattern CLEAR_REGEXP = Pattern
-//			.compile("(^|[?&])(?:bduss|timestamp)=\\w+");
-//	public static URI toIdentity(URL url) {
-//		try {
-//			String clearURL = CLEAR_REGEXP.matcher(url.toString()).replaceAll(
-//					"$1");
-//			return URI.create(clearURL);
-//		} catch (Exception e) {
-//			throw new RuntimeException(e);
-//		}
-//	}
+	// private static Pattern CLEAR_REGEXP = Pattern
+	// .compile("(^|[?&])(?:bduss|timestamp)=\\w+");
+	// public static URI toIdentity(URL url) {
+	// try {
+	// String clearURL = CLEAR_REGEXP.matcher(url.toString()).replaceAll(
+	// "$1");
+	// return URI.create(clearURL);
+	// } catch (Exception e) {
+	// throw new RuntimeException(e);
+	// }
+	// }
 
 	static InputStream getInputStream(URLConnection conn) throws IOException {
 		String contentEncoding = conn.getContentEncoding();
-		//log.info("contentEncoding:"+contentEncoding);
+		// log.info("contentEncoding:"+contentEncoding);
 		InputStream in = conn.getInputStream();
 		if (contentEncoding != null && contentEncoding.indexOf("gzip") >= 0
 				&& !(in instanceof GZIPInputStream)) {
@@ -149,7 +196,7 @@ public final class HttpUtil {
 			}
 			// check if matches standard gzip maguc number
 			in.mark(2);
-			if (in.read() == 0x1f && in.read()  == 0x8b) {
+			if (in.read() == 0x1f && in.read() == 0x8b) {
 				in.reset();
 				DebugLog.info("try ungzip:" + conn.getURL());
 				in = new GZIPInputStream(in);
@@ -157,8 +204,9 @@ public final class HttpUtil {
 				in.reset();
 			}
 			return in;
-		}else{
-			//conn inputstream no buffer by default(buffered for beter performance)!!
+		} else {
+			// conn inputstream no buffer by default(buffered for beter
+			// performance)!!
 			return new BufferedInputStream(in);
 		}
 
@@ -333,8 +381,7 @@ public final class HttpUtil {
 		out.write(END_BYTES);
 	}
 
-
-	static Type[] getResultType(final Callback<? extends Object> cb) {
+	static Type[] getPrepareCallbackType(final Callback<? extends Object> cb) {
 		Type cbc = cb.getClass();
 		Type[] type = callbackTypeMap.get(cbc);
 		if (type == null) {
@@ -343,14 +390,15 @@ public final class HttpUtil {
 			if (cb instanceof PrepareCallback) {
 				type = new Type[] {
 						ReflectUtil.getParameterizedType(cbc,
-								PrepareCallback.class, 0), callbackType };
+								PrepareCallback.class, 0),callbackType };
 			} else {
-				type = new Type[] { callbackType };
+				type = new Type[] { null,callbackType };
 			}
 			callbackTypeMap.put(cbc, type);
 		}
 		return type;
 	}
+
 	public static Object openFileStream(URL url) throws IOException {
 		String filename = url.getPath();
 		if (url.getHost().equals(
@@ -358,8 +406,7 @@ public final class HttpUtil {
 			filename = ANDROID_ASSET + filename.substring(1);
 		}
 		if (filename.startsWith(ANDROID_ASSET)) {
-			return UIO.getApplication()
-					.getResources().getAssets()
+			return UIO.getApplication().getResources().getAssets()
 					.open(filename.substring(ANDROID_ASSET.length()));
 		} else {
 			return new FileInputStream(url.getPath());
@@ -374,84 +421,89 @@ public final class HttpUtil {
 			return null;
 		}
 	}
+
 	public static NetworkStatistics DEFAULT_NETWORK_STATISTICS = new NetworkStatistics() {
 
 		@Override
 		public void onHttpWaitDuration(URL path, long time) {
-			logDuration(path,"HttpWaitDuration" ,time);
+			logDuration(path, "HttpWaitDuration", time);
 		}
+
 		@Override
 		public void onHttpConnectDuration(URL path, long time) {
-			logDuration(path,"HttpConnectDuration" , time);
+			logDuration(path, "HttpConnectDuration", time);
 		}
 
 		@Override
 		public void onHttpHeaderDuration(URL path, long time) {
-			logDuration(path,"HttpHeaderDuration" , time);
+			logDuration(path, "HttpHeaderDuration", time);
 		}
 
 		@Override
 		public void onHttpCacheDuration(URL path, long time, boolean fromTtl) {
-			logDuration(path,"HttpCacheDuration( " + (fromTtl ? "ttl" : "etag")
-					+ ")" , time);
+			logDuration(path, "HttpCacheDuration( "
+					+ (fromTtl ? "ttl" : "etag") + ")", time);
 		}
 
 		@Override
 		public void onHttpNetworkDuration(URL path, long time) {
-			logDuration(path,"HttpNetworkDuration" , time);
+			logDuration(path, "HttpNetworkDuration", time);
 		}
 
 		@Override
 		public void onHttpCancelDuration(URL path, long time) {
-			logDuration(path,"HttpCancelDuration" , time);
+			logDuration(path, "HttpCancelDuration", time);
 
 		}
 
 		@Override
 		public void onHttpDownloadError(URL path, Throwable exception) {
-			logException(path,"HttpDownloadError" ,exception);
+			logException(path, "HttpDownloadError", exception);
 		}
 
 		@Override
 		public void onHttpParseError(URL path, Throwable exception) {
 
-			logException(path,"HttpParseError" ,exception);
+			logException(path, "HttpParseError", exception);
 		}
 
 		@Override
 		public void onHttpCallbackError(URL path, Throwable exception) {
-			logException(path,"HttpCallbackError" ,exception);
+			logException(path, "HttpCallbackError", exception);
 		}
 
 		@Override
 		public void onRedirectOut(String domain) {
-			DebugLog.info("RedirectOut:"+  domain);
+			DebugLog.info("RedirectOut:" + domain);
 		}
 
 		private void logException(URL path, String string, Throwable exception) {
 		}
-		private void logDuration(URL path,String string, long time) {
+
+		private void logDuration(URL path, String string, long time) {
 		}
 
 	};
+
 	public static Object transform(Object source, Type requiredTye) {
 		Class<? extends Object> type = source.getClass();
-		if(source == null || type == requiredTye){
+		if (source == null || type == requiredTye) {
 			return source;
 		}
-		if(type == String.class){
-			String text = (String)source;
+		if (type == String.class) {
+			String text = (String) source;
 			boolean isDebug = DebugLog.isDebug();
-			if(isDebug && text.startsWith("array(")){
-				text  = "数据异常，请检查后端php是否在调试数据："+text;
-			}else if(isDebug && text.startsWith("<")){
-				text = text.replaceAll("(<.*)[\\s\\S]*(<title>.*)?[\\s\\S]*","$1...$2...");
-			} else{
+			if (isDebug && text.startsWith("array(")) {
+				text = "数据异常，请检查后端php是否在调试数据：" + text;
+			} else if (isDebug && text.startsWith("<")) {
+				text = text.replaceAll("(<.*)[\\s\\S]*(<title>.*)?[\\s\\S]*",
+						"$1...$2...");
+			} else {
 				return JSON_DECODER.decodeObject(text, requiredTye);
 			}
 			DebugLog.warn(text);
-			throw new ExpressionSyntaxException("无效JSON表达式："+text);
-		}else{
+			throw new ExpressionSyntaxException("无效JSON表达式：" + text);
+		} else {
 			return JSON_DECODER.transform(source, requiredTye);
 		}
 	}

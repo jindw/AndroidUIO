@@ -72,6 +72,8 @@ class HttpRequestImpl implements HttpRequest {
 			url = HttpUtil.appendCookieAsQuery(url, cookie);
 		}
 		URLConnection conn = proxy == null ? url.openConnection() : url.openConnection(proxy);
+		
+		HttpUtil.trustConnection(conn);
 		HttpUtil.assertNotCanceled(conn, cancelState);
 		conn.setConnectTimeout(CONNECT_TIMEOUT);
 		conn.setReadTimeout(READ_TIMEOUT);

@@ -4,12 +4,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.Map;
 
 import org.xidea.android.Callback;
 import org.xidea.android.Callback.CacheCallback;
+import org.xidea.android.Callback.Loading;
 import org.xidea.android.Callback.PrepareCallback;
 import org.xidea.android.impl.AsynTask;
 import org.xidea.android.impl.DebugLog;
@@ -17,6 +19,7 @@ import org.xidea.android.impl.Network.CachePolicy;
 import org.xidea.android.impl.Network.HttpMethod;
 import org.xidea.android.impl.io.IOUtil;
 import org.xidea.android.impl.ui.ImageUtil;
+import org.xidea.el.impl.ReflectUtil;
 
 import android.graphics.Bitmap;
 import android.graphics.Movie;
@@ -36,7 +39,8 @@ class HttpAsynTaskImpl implements AsynTask {
 	private final HttpMethod method;
 	private final HttpSupport http;
 	private final Handler from = HttpUtil.currentHandler();
-	private final Type[] types;// [prepareType?,callbackType]
+	private final Type prepareType;
+	private final Type callbackType;
 
 	private Thread thread;// for interrupt
 	private boolean canceled;
@@ -49,12 +53,23 @@ class HttpAsynTaskImpl implements AsynTask {
 		this.url = HttpUtil.parseURL(path);
 		this.method = method;
 		this.callback = callback;
-		this.types = HttpUtil.getResultType(callback);
+		Type[] types = HttpUtil.getPrepareCallbackType(callback);//[prepareType?,callbackType]
+		prepareType = types[0];
+		callbackType = types[1];
+		
 		this.postParams = postParams;
 	}
 
 	@Override
 	public void onStart() {
+		Method method;
+		try {
+			method = callback.getClass().getDeclaredMethod("callback", ReflectUtil.baseClass(callbackType));
+			Loading loading = method.getAnnotation(Loading.class);
+			LoadingImpl.showDialog(this,loading);
+		} catch (NoSuchMethodException e) {
+			DebugLog.error(e);
+		}
 		startedTime = System.currentTimeMillis();
 		thread = Thread.currentThread();
 		http.getStatistics().onHttpWaitDuration(url,
@@ -63,7 +78,7 @@ class HttpAsynTaskImpl implements AsynTask {
 
 	@Override
 	public Object load(CachePolicy cp) {
-		Type rawType = types[0];
+		Type rawType = prepareType == null?callbackType:prepareType;
 		Object result = null;
 		try {
 			if (rawType == AsynTask.class) {
@@ -122,7 +137,7 @@ class HttpAsynTaskImpl implements AsynTask {
 			result = ((PrepareCallback) callback).prepare(result);
 			if (result != null) {// 只有prepare
 				// 结果有可能变化，因为在loadRaw中已经正确转型了。
-				result = HttpUtil.transform(result, types[1]);
+				result = HttpUtil.transform(result, callbackType);
 			}
 		}
 		final Object result2 = result;
@@ -190,6 +205,7 @@ class HttpAsynTaskImpl implements AsynTask {
 
 	@Override
 	public void onComplete() {
+		LoadingImpl.cancleUI(this);
 	}
 
 	@Override
@@ -215,6 +231,7 @@ class HttpAsynTaskImpl implements AsynTask {
 
 	@Override
 	public void cancel() {
+		LoadingImpl.cancleUI(this);
 		if (!canceled) {
 			canceled = true;
 		}

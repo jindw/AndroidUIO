@@ -6,6 +6,7 @@ import java.util.HashMap;
 import org.xidea.android.Callback;
 import org.xidea.android.UIO;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -23,7 +24,7 @@ public class UIFacade {
 		return showTips(message, Toast.LENGTH_SHORT);
 	}
 
-	private Callback.Cancelable showTips(CharSequence message, int duration) {
+	private static Callback.Cancelable showTips(CharSequence message, int duration) {
 
 		return new ToastCancelable(message, duration);
 	}
@@ -74,14 +75,23 @@ public class UIFacade {
 
 	}
 
-	public void cancelToast() {
+	private void cancelToast() {
 		if (currentToast != null) {
 			Toast toast = currentToast.get();
 			if (toast != null) {
 				toast.cancel();
 			}
-
 		}
+	}
+
+	public static int dip2px(float dipValue) {
+		final float scale = UIO.getApplication().getResources().getDisplayMetrics().density;
+		return (int) (dipValue * scale + 0.5f);
+	}
+
+	public static int px2dip(Context context, float pxValue) {
+		final float scale = UIO.getApplication().getResources().getDisplayMetrics().density;
+		return (int) (pxValue / scale + 0.5f);
 	}
 
 	// private int androidbaseReservedId = 0xFFFFFFFF;//android.R.id.custom;

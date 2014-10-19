@@ -1,5 +1,11 @@
 package org.xidea.android;
 
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
  * 通用回掉接口
  * @author jindawei
@@ -7,6 +13,15 @@ package org.xidea.android;
  * @param <ResultType>
  */
 public interface Callback<ResultType> {
+
+	/**
+	 * 用于Http请求时，放在callback方法上，可以自动显示和隐藏加载对话框。
+	 */
+	@Target(ElementType.METHOD)
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface Loading {
+		String value() default "数据加载中...";
+	}
 	/**
 	 * 在调用时所在的线程执行回调处理（比如事件发起的调用是在ui线程，回调就可以直接操作ui元素）
 	 * @param result 经过自动数据转换后的对象， 如，我们要求一个JavaBean，他会自动构造该对象， 并且递归初始化他的属性（从json属性值自动转换类型并赋值），支持范型
