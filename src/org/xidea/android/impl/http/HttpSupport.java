@@ -80,15 +80,16 @@ public class HttpSupport implements Network {
 		return task;
 	}
 
-	public void init(final Application application, final int cacheSize) {
+	public void init(final Application application, int cacheSize) {
 		ns = new NetworkState(application);
 		File extCache = application.getExternalCacheDir();
 		if (extCache == null) {
 			// TODO: 监控SD卡
-		} else {
-			this.cacheDir = new File(extCache, "uio_http_cache");
-
-		}
+			extCache = application.getCacheDir();
+			//内存紧张最多1M
+			cacheSize = Math.min(cacheSize, 1024*1024);
+		} 
+		this.cacheDir = new File(extCache, "uio_http_cache");
 		this.cacheSize = cacheSize;
 	}
 

@@ -30,7 +30,7 @@ import org.xidea.android.impl.http.HttpUtil;
 import org.xidea.android.impl.io.IOUtil;
 
 public final class ImageUtil {
-	private static final int IMAGE_HEADER_BUFFER = 1024 * 16;
+	private static final int IMAGE_HEADER_BUFFER = 1024 * 1024;
 	public static final boolean GC_IGNORED_BITMAP = Build.VERSION.SDK_INT <= 10;
 	private static SparseIntArray bitmapRefMap = new SparseIntArray();
 	private static final Config COLOR_TYPE = Bitmap.Config.ARGB_8888;

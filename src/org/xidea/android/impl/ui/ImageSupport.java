@@ -22,6 +22,8 @@ import android.graphics.Bitmap;
 import android.graphics.Movie;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
+import android.view.View;
 import android.widget.ImageView;
 
 public class ImageSupport {
@@ -294,7 +296,12 @@ public class ImageSupport {
 				ImageUtil.release(((BitmapDrawable) old).getBitmap());
 			}
 			this.currentDrawable = drawable;
-			DebugLog.info("set drawable:"+url+""+view+drawable);
+			//DebugLog.info("set drawable:"+url+""+view+drawable);
+			if(drawable instanceof MovieDrawable){
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					view.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+				}
+			}
 			view.setImageDrawable(drawable);
 		}
 

@@ -76,16 +76,17 @@
 	<target name="build-jar">
 		<jar  destfile="bin/UIO.jar">
 			<zipfileset src="libs/JSEL.jar" includes="**"/>
-			<fileset dir="bin/classes">
-				<include name="org/xidea/android/*.java"/>
+			<fileset dir="src">
+				<include name="org/xidea/android/**.java"/>
+				<include name="org/xidea/android/**/*.java"/>
 			</fileset>
 			<fileset dir="bin/classes">
 				<include name="org/xidea/android/**" />
 				<exclude name="**/test/**" />
 				<exclude name="org/robolectric/**"/>
 			</fileset>
-			
 		</jar>
+		<copy file="bin/UIO.jar" todir="../AndroidTest/libs"/>
 	</target>
 	
 

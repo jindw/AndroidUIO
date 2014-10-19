@@ -7,6 +7,7 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
+import android.util.Log;
 
 public class MovieDrawable extends Drawable  implements Runnable, Animatable {
 	private Movie movie;
@@ -24,8 +25,10 @@ public class MovieDrawable extends Drawable  implements Runnable, Animatable {
 		if(duration >0){
 			ms = ms%duration;
 		}
+		//Log.e("GIF", "movie:"+ms+'/'+duration+"["+movie.width()+','+movie.height()+"]");
 		movie.setTime(ms);
 		movie.draw(canvas, 0, 0);
+		start();
 	}
     public void start() {
         if (!isRunning()) {
