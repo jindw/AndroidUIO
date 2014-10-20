@@ -17,6 +17,7 @@ import org.xidea.android.impl.AsynTask;
 import org.xidea.android.impl.DebugLog;
 import org.xidea.android.impl.Network.CachePolicy;
 import org.xidea.android.impl.Network.HttpMethod;
+import org.xidea.android.impl.Network.RequestTimes;
 import org.xidea.android.impl.io.IOUtil;
 import org.xidea.android.impl.ui.ImageUtil;
 import org.xidea.el.impl.ReflectUtil;
@@ -28,13 +29,12 @@ import android.os.Handler;
 
 
 
-class HttpAsynTaskImpl implements AsynTask {
+class HttpAsynTaskImpl implements AsynTask,RequestTimes {
 	private static final int MAX_TASK_TIMEOUT = 1 * 60 * 1000;
 	@SuppressWarnings("rawtypes")
 	private final Callback callback;
 	private final long createTime = System.currentTimeMillis();
 	private long startedTime;
-	private final String path;
 	private final URL url;
 	private final HttpMethod method;
 	private final HttpSupport http;
@@ -46,10 +46,13 @@ class HttpAsynTaskImpl implements AsynTask {
 	private boolean canceled;
 	private Map<String, Object> postParams;
 
+	final long[] requestTimes= new long[3];
+	final long[] cacheTimes= new long[3];
+	final long[] callbackTimes= new long[3];
+
 	public HttpAsynTaskImpl(HttpSupport http, String path, HttpMethod method,
 			Callback<?> callback,Map<String,Object> postParams) {
 		this.http = http;
-		this.path = path;
 		this.url = HttpUtil.parseURL(path);
 		this.method = method;
 		this.callback = callback;
@@ -72,8 +75,6 @@ class HttpAsynTaskImpl implements AsynTask {
 		}
 		startedTime = System.currentTimeMillis();
 		thread = Thread.currentThread();
-		http.getStatistics().onHttpWaitDuration(url,
-				System.currentTimeMillis() - getCreateTime());
 	}
 
 	@Override
@@ -124,15 +125,17 @@ class HttpAsynTaskImpl implements AsynTask {
 	}
 
 	@Override
-	public boolean onCache(Object result){
-		return doExecute(result, true);
+	public boolean onCache(Object result,long start){
+		return doExecute(result, start, true);
 	}
 	@Override
-	public void onCallback(Object result){
-		doExecute(result, false);
+	public void onCallback(Object result,long start){
+		doExecute(result, start,false);
 	}
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public boolean doExecute(Object result, final boolean cacheCheck) {
+	public boolean doExecute(Object result, long startTime,final boolean cacheCheck) {
+		final long[] times = cacheCheck?this.cacheTimes:callbackTimes;
+		times[0] = startTime;
 		if (callback instanceof PrepareCallback) {
 			result = ((PrepareCallback) callback).prepare(result);
 			if (result != null) {// 只有prepare
@@ -145,6 +148,7 @@ class HttpAsynTaskImpl implements AsynTask {
 		postBack(new Runnable() {
 			@Override
 			public void run() {
+				times[1] = System.currentTimeMillis();
 				boolean rtv = false;
 				try {
 					if (cacheCheck) {
@@ -155,6 +159,7 @@ class HttpAsynTaskImpl implements AsynTask {
 				} catch (Throwable th) {
 					error(th, true);
 				} finally {
+					times[2] = System.currentTimeMillis();
 					synchronized (lock) {
 						lock[0] = rtv;
 						lock.notify();
@@ -219,10 +224,6 @@ class HttpAsynTaskImpl implements AsynTask {
 		return callback;
 	}
 
-	@Override
-	public long getCreateTime() {
-		return createTime;
-	}
 
 	@Override
 	public int getTimeout() {
@@ -246,13 +247,54 @@ class HttpAsynTaskImpl implements AsynTask {
 	}
 
 	@Override
-	public long getStartTime() {
+	public long getTaskStartTime() {
 		return startedTime;
 	}
 
 	@Override
 	public Thread getThread() {
 		return thread;
+	}
+
+	@Override
+	public long getTaskCreateTime() {
+		return createTime;
+	}
+
+	@Override
+	public long getRequestStartTime() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public long getDownloadStartTime() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public long getRequestEndTime() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public long getPrepareStartTime(boolean isCache) {
+		long[] times = isCache?this.cacheTimes:callbackTimes;
+		return times[0];
+	}
+
+	@Override
+	public long getCallbackStartTime(boolean isCache) {
+		long[] times = isCache?this.cacheTimes:callbackTimes;
+		return times[1];
+	}
+
+	@Override
+	public long getCallbackEndTime(boolean isCache) {
+		long[] times = isCache?this.cacheTimes:callbackTimes;
+		return times[2];
 	}
 
 }

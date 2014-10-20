@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
+import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -34,7 +35,6 @@ import org.xidea.android.Callback.PrepareCallback;
 import org.xidea.android.UIO;
 import org.xidea.android.impl.DebugLog;
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.Network.NetworkStatistics;
 import org.xidea.android.impl.ui.UIFacade;
 import org.xidea.el.ExpressionSyntaxException;
 import org.xidea.el.impl.ReflectUtil;
@@ -43,9 +43,9 @@ import org.xidea.el.json.JSONDecoder;
 import android.os.Handler;
 import android.os.Looper;
 
-public final class HttpUtil {
+public abstract class HttpUtil {
 
-	static Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
+	final static Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 	private static final String ANDROID_ASSET = "/android_asset/";
 	private static byte[] END_BYTES = "\r\n".getBytes();
 	private static byte[] TWO_HYPENS_BYTES = "--".getBytes();
@@ -53,69 +53,19 @@ public final class HttpUtil {
 			.getBytes();
 	// static final String DEFAULT_CHARSET = "UTF-8";
 	private static final JSONDecoder JSON_DECODER = new JSONDecoder(false);
-	static Pattern CHARSET = Pattern.compile(".*?;\\s*charset=([\\w\\-]+).*?");
-	static Pattern UTF8_DEFAULT_CONTENT_TYPE = Pattern
+	private static Pattern CHARSET = Pattern.compile(".*?;\\s*charset=([\\w\\-]+).*?");
+	private static Pattern UTF8_DEFAULT_CONTENT_TYPE = Pattern
 			.compile("^(?:application\\/json|text\\/json)");
-	static Pattern STRING_CONTENT_TYPE = Pattern
+	private static Pattern STRING_CONTENT_TYPE = Pattern
 			.compile("^(?:application\\/os-stream|image\\/.*)");
-	static Pattern TEXT_CONTENT_TYPE = Pattern.compile("^text\\/.*");
+	private static Pattern TEXT_CONTENT_TYPE = Pattern.compile("^text\\/.*");
+	
+
+	private static final Pattern COOKIE_ENTRY = Pattern
+			.compile("(?:^|;\\s*)([\\w\\.\\-\\_\\$]+)(?:=([^;]+))");
 
 	private static HashMap<Type, Type[]> callbackTypeMap = new HashMap<Type, Type[]>();
 	private static SSLSocketFactory sslSocketFactory;
-
-	static void startCacheAsyn(final HttpSupport impl) {
-		new Thread() {
-			public void run() {
-				impl.initCache();
-				DebugLog.info("cache inited");
-			}
-
-		}.start();
-	}
-
-	private HttpUtil() {
-	}
-
-	static void showNetworkTips(String msg) {
-		UIFacade.getInstance().shortTips(msg);
-	}
-
-	public static void trustConnection(URLConnection conn) {
-		if (conn instanceof HttpsURLConnection) {
-			HttpsURLConnection sonn = (HttpsURLConnection) conn;
-			// Create a trust manager that does not validate certificate chains
-			if (sslSocketFactory == null) {
-				TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
-					@Override
-					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-						return null;
-					}
-
-					@Override
-					public void checkClientTrusted(X509Certificate[] certs,
-							String authType) {
-					}
-
-					@Override
-					public void checkServerTrusted(X509Certificate[] certs,
-							String authType) {
-					}
-				} };
-				try {
-					SSLContext sslContext = SSLContext.getInstance("TLS");
-					sslContext.init(null, trustAllCerts, null);
-					sslSocketFactory = sslContext.getSocketFactory();
-				} catch (Throwable e) {
-					DebugLog.error(e.getMessage(), e);
-				}
-			}
-
-			if (sslSocketFactory != null) {
-				sonn.setSSLSocketFactory(sslSocketFactory);
-				sonn.setHostnameVerifier(org.apache.http.conn.ssl.SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-			}
-		}
-	}
 
 	static String guessCharset(URLConnection conn) {
 		if (conn == null) {
@@ -140,8 +90,6 @@ public final class HttpUtil {
 		return charset;
 	}
 
-	static final Pattern COOKIE_ENTRY = Pattern
-			.compile("(?:^|;\\s*)([\\w\\.\\-\\_\\$]+)(?:=([^;]+))");
 
 	static URL appendCookieAsQuery(URL url, String cookie)
 			throws MalformedURLException {
@@ -212,7 +160,7 @@ public final class HttpUtil {
 
 	}
 
-	public static URL parseURL(String path) {
+	static URL parseURL(String path) {
 		if (path == null || path.length() == 0) {
 			return null;
 		}
@@ -272,7 +220,7 @@ public final class HttpUtil {
 		return true;
 	}
 
-	public static void addMultiPartPost(HttpURLConnection conn,
+	static void addMultiPartPost(HttpURLConnection conn,
 			Map<String, Object> params, String charset, Cancelable cancelState)
 			throws IOException {
 		boolean sendzip = false;
@@ -399,7 +347,7 @@ public final class HttpUtil {
 		return type;
 	}
 
-	public static Object openFileStream(URL url) throws IOException {
+	static Object openFileStream(URL url) throws IOException {
 		String filename = url.getPath();
 		if (url.getHost().equals(
 				ANDROID_ASSET.substring(1, ANDROID_ASSET.length() - 1))) {
@@ -413,7 +361,7 @@ public final class HttpUtil {
 		}
 	}
 
-	public static Handler currentHandler() {
+	static Handler currentHandler() {
 		try {
 			Looper loop = Looper.myLooper();
 			return loop == null ? null : new Handler(loop);
@@ -422,70 +370,7 @@ public final class HttpUtil {
 		}
 	}
 
-	public static NetworkStatistics DEFAULT_NETWORK_STATISTICS = new NetworkStatistics() {
-
-		@Override
-		public void onHttpWaitDuration(URL path, long time) {
-			logDuration(path, "HttpWaitDuration", time);
-		}
-
-		@Override
-		public void onHttpConnectDuration(URL path, long time) {
-			logDuration(path, "HttpConnectDuration", time);
-		}
-
-		@Override
-		public void onHttpHeaderDuration(URL path, long time) {
-			logDuration(path, "HttpHeaderDuration", time);
-		}
-
-		@Override
-		public void onHttpCacheDuration(URL path, long time, boolean fromTtl) {
-			logDuration(path, "HttpCacheDuration( "
-					+ (fromTtl ? "ttl" : "etag") + ")", time);
-		}
-
-		@Override
-		public void onHttpNetworkDuration(URL path, long time) {
-			logDuration(path, "HttpNetworkDuration", time);
-		}
-
-		@Override
-		public void onHttpCancelDuration(URL path, long time) {
-			logDuration(path, "HttpCancelDuration", time);
-
-		}
-
-		@Override
-		public void onHttpDownloadError(URL path, Throwable exception) {
-			logException(path, "HttpDownloadError", exception);
-		}
-
-		@Override
-		public void onHttpParseError(URL path, Throwable exception) {
-
-			logException(path, "HttpParseError", exception);
-		}
-
-		@Override
-		public void onHttpCallbackError(URL path, Throwable exception) {
-			logException(path, "HttpCallbackError", exception);
-		}
-
-		@Override
-		public void onRedirectOut(String domain) {
-			DebugLog.info("RedirectOut:" + domain);
-		}
-
-		private void logException(URL path, String string, Throwable exception) {
-		}
-
-		private void logDuration(URL path, String string, long time) {
-		}
-
-	};
-
-	public static Object transform(Object source, Type requiredTye) {
+	static Object transform(Object source, Type requiredTye) {
 		Class<? extends Object> type = source.getClass();
 		if (source == null || type == requiredTye) {
 			return source;
@@ -508,4 +393,81 @@ public final class HttpUtil {
 		}
 	}
 
+
+	static void showNetworkTips(String msg) {
+		UIFacade.getInstance().shortTips(msg);
+	}
+
+	static void trustConnection(URLConnection conn) {
+		if (conn instanceof HttpsURLConnection) {
+			HttpsURLConnection sonn = (HttpsURLConnection) conn;
+			// Create a trust manager that does not validate certificate chains
+			if (sslSocketFactory == null) {
+				TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+					@Override
+					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+						return null;
+					}
+
+					@Override
+					public void checkClientTrusted(X509Certificate[] certs,
+							String authType) {
+					}
+
+					@Override
+					public void checkServerTrusted(X509Certificate[] certs,
+							String authType) {
+					}
+				} };
+				try {
+					SSLContext sslContext = SSLContext.getInstance("TLS");
+					sslContext.init(null, trustAllCerts, null);
+					sslSocketFactory = sslContext.getSocketFactory();
+				} catch (Throwable e) {
+					DebugLog.error(e.getMessage(), e);
+				}
+			}
+
+			if (sslSocketFactory != null) {
+				sonn.setSSLSocketFactory(sslSocketFactory);
+				sonn.setHostnameVerifier(org.apache.http.conn.ssl.SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+			}
+		}
+	}
+	static void processRedirect(final URL url, URLConnection conn)
+			throws RedirectOutException {
+		if (conn != null) {
+			try {
+				URL realURL = conn.getURL();
+				if (realURL == url) {
+					String location = conn.getHeaderField("Location");
+					if (location != null) {
+						realURL = new URL(realURL, location);
+					}
+				}
+				if (realURL != url) {
+					String host1 = url.getHost();
+					String host2 = realURL.getHost();
+					if (!host1.equals(host2)) {
+						int p = host1.lastIndexOf('.',
+								host1.lastIndexOf('.') - 1);
+						if (p >= 0 && !host2.endsWith(host1.substring(p))) {
+							throw new RedirectOutException(host2);
+						}
+					}
+				}
+			} catch (RedirectOutException e) {
+				throw e;
+			} catch (Exception e) {
+			}
+		}
+	}
+	static class RedirectOutException extends ConnectException {
+		static int inc;
+		private static final long serialVersionUID = 1L;
+
+		public RedirectOutException(String domain) {
+			super("network error! maybe a provider fee page");
+		}
+	}
 }

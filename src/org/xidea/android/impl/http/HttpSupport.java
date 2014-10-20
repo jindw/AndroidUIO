@@ -7,6 +7,7 @@ import org.xidea.android.impl.AsynTask.AsynImpl;
 import org.xidea.android.impl.AsynTask;
 import org.xidea.android.impl.DebugLog;
 import org.xidea.android.impl.Network;
+import org.xidea.android.impl.http.HttpUtil.RedirectOutException;
 import org.xidea.android.impl.io.IOUtil;
 
 import android.app.Application;
@@ -48,7 +49,6 @@ public class HttpSupport implements Network {
 	private Object cacheLock = new Object();
 	private HttpRequestImpl request = new HttpRequestImpl();
 	private AsynImpl asyn = new AsynImpl();
-	private NetworkStatistics networkStatistics = HttpUtil.DEFAULT_NETWORK_STATISTICS;
 
 	Map<String, String> requestHeaders = new HashMap<String, String>();
 	{
@@ -232,14 +232,6 @@ public class HttpSupport implements Network {
 		cacheImpl.updateCache(id, content);
 	}
 
-	public NetworkStatistics getStatistics() {
-		return networkStatistics;
-	}
-
-	@Override
-	public void setStatistics(NetworkStatistics networkStatistics) {
-		this.networkStatistics = networkStatistics;
-	}
 
 	public InputStream getStream(URL url, HttpMethod method,
 			Map<String, Object> post, Cancelable cancelable, CachePolicy cache)
@@ -289,7 +281,6 @@ public class HttpSupport implements Network {
 				e = ex;
 			}
 			try {
-
 				while (true) {
 					if (e != null
 							&& ((System.currentTimeMillis() - beginTime) > MAX_RETRY_TIME || ++tryCount >= maxCount)) {
@@ -340,7 +331,6 @@ public class HttpSupport implements Network {
 	 * @throws IOException
 	 */
 	class Request {
-		final long start;
 		final URI uri;
 		final URL url;
 		final Cancelable cancelable;
@@ -351,32 +341,27 @@ public class HttpSupport implements Network {
 		// InputStream in;
 		HttpCacheEntry entry;
 		Object result;// 可以是，URLConnection，InputStream，String，HttpCacheEntry
+		final long[] requestTimes;
 
 		Request(final URL rawURL, Cancelable cancelState, CachePolicy cache,
 				boolean saveCache) throws IOException {
-			this.start = System.currentTimeMillis();
 			this.uri = toIdentity(rawURL);
 			this.url = rawURL;
 			this.cache = cache;
 			this.saveCache = saveCache;
 			this.cancelable = cancelState;
+
+			if(cancelable instanceof HttpAsynTaskImpl){
+				requestTimes = ((HttpAsynTaskImpl)cancelable).requestTimes;
+			}else{
+				requestTimes = new long[3];
+			}
 		}
 
 		@SuppressWarnings("unchecked")
 		public <T> T getResult(Class<T> type) throws IOException {
 			if (result instanceof URLConnection) {
-				// conn = (URLConnection) result;
-				conn.connect();
-				networkStatistics.onHttpConnectDuration(url,
-						System.currentTimeMillis() - start);
-				result = new FilterInputStream(HttpUtil.getInputStream(conn)) {
-					@Override
-					public void close() throws IOException {
-						networkStatistics.onHttpNetworkDuration(url,
-								System.currentTimeMillis() - start);
-						super.close();
-					}
-				};
+				result = load();
 			}
 
 			if (result instanceof HttpCacheEntry) {
@@ -404,6 +389,22 @@ public class HttpSupport implements Network {
 			return (T) result;
 		}
 
+		private InputStream load() throws IOException {
+			// conn = (URLConnection) result;
+			requestTimes[0] = System.currentTimeMillis();
+			conn.connect();
+			InputStream in = HttpUtil.getInputStream(conn);
+			requestTimes[1] = System.currentTimeMillis();
+			InputStream result = new FilterInputStream(in) {
+				@Override
+				public void close() throws IOException {
+					requestTimes[2] = System.currentTimeMillis();
+					super.close();
+				}
+			};
+			return result;
+		}
+
 		<T> T doRequest(HttpMethod method, Map<String, Object> post,
 				Class<T> type) throws IOException {
 			try {
@@ -425,11 +426,9 @@ public class HttpSupport implements Network {
 				tryCache(false);
 				return getResult(type);
 			} catch (CanceledException e) {
-				networkStatistics.onHttpCancelDuration(url,
-						System.currentTimeMillis() - start);
 				throw e;
 			} finally {
-				processRedirect(url, conn);
+				HttpUtil.processRedirect(url, conn);
 			}
 		}
 
@@ -477,10 +476,6 @@ public class HttpSupport implements Network {
 		 * @param checked
 		 */
 		private void tryCache(boolean checked) {
-			if (entry != null) {
-				networkStatistics.onHttpCacheDuration(url,
-						System.currentTimeMillis() - start, true);
-			}
 			if (cache == CachePolicy.NetworkOnly) {
 				result = null;
 			} else {
@@ -498,51 +493,15 @@ public class HttpSupport implements Network {
 				if (entry == null) {
 					entry = cacheImpl.require(uri);
 				}
-				InputStream ws = cacheImpl.getWritebackStream(entry, conn, cancelable,
-						start);
+				InputStream in = load();
+				InputStream ws = cacheImpl.getWritebackStream(entry, conn, in,cancelable);
 				result = (ws == null ? entry : ws);
 			}
 		}
 
-		private void processRedirect(final URL url, URLConnection conn)
-				throws RedirectOutException {
-			if (conn != null) {
-				try {
-					URL realURL = conn.getURL();
-					if (realURL == url) {
-						String location = conn.getHeaderField("Location");
-						if (location != null) {
-							realURL = new URL(realURL, location);
-						}
-					}
-					if (realURL != url) {
-						String host1 = url.getHost();
-						String host2 = realURL.getHost();
-						if (!host1.equals(host2)) {
-							int p = host1.lastIndexOf('.',
-									host1.lastIndexOf('.') - 1);
-							if (p >= 0 && !host2.endsWith(host1.substring(p))) {
-								networkStatistics.onRedirectOut(host2);
-								throw new RedirectOutException(host2);
-							}
-						}
-					}
-				} catch (RedirectOutException e) {
-					throw e;
-				} catch (Exception e) {
-				}
-			}
-		}
 
 	}
 
-	private static class RedirectOutException extends ConnectException {
-		private static int inc;
-		private static final long serialVersionUID = 1L;
 
-		public RedirectOutException(String domain) {
-			super("network error! maybe a provider fee page");
-		}
-	}
 
 }

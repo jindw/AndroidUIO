@@ -19,12 +19,12 @@ public interface AsynTask extends Cancelable {
 	/**
 	 * 处理缓存数据，返回是否信任该缓存
 	 */
-	boolean onCache(Object cacheData);
+	boolean onCache(Object cacheData,long start);
 
 	/**
 	 * 处理缓存数据，返回是否信任该缓存
 	 */
-	void onCallback(Object result);
+	void onCallback(Object result,long start);
 
 	void onComplete();
 
@@ -36,9 +36,7 @@ public interface AsynTask extends Cancelable {
 
 	URL getURL();
 
-	long getCreateTime();
-
-	long getStartTime();
+	long getTaskStartTime();
 
 	int getTimeout();
 
@@ -86,15 +84,17 @@ public interface AsynTask extends Cancelable {
 						Callback<? extends Object> callback = task
 								.getCallback();
 						if (callback instanceof CacheCallback) {
+							long start = System.currentTimeMillis();
 							Object result = task.load(CachePolicy.CacheOnly);
-							trustCache = task.onCache(result);
+							trustCache = task.onCache(result,start);
 							cachePolicy = CachePolicy.NetworkOnly;
 						}
 					} catch (Throwable e) {
 						task.error(e, false);
 					}
+					long start = System.currentTimeMillis();
 					Object result = trustCache ? null : task.load(cachePolicy);
-					task.onCallback(result);
+					task.onCallback(result,start);
 				} catch (Throwable e) {
 					task.error(e, false);
 				} finally {
@@ -120,8 +120,8 @@ public interface AsynTask extends Cancelable {
 									.iterator(); it.hasNext();) {
 								AsynTask task = it.next();
 								long timeout = task.getTimeout();
-								if (timeout > 0 && task.getStartTime() > 0
-										&& now - task.getStartTime() > timeout) {
+								if (timeout > 0 && task.getTaskStartTime() > 0
+										&& now - task.getTaskStartTime() > timeout) {
 									it.remove();
 									DebugLog.warn("task timeout :"
 											+ task.getURL());

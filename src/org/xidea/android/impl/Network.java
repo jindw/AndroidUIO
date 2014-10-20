@@ -52,8 +52,6 @@ public interface Network {
 
 	public abstract void removeCache(String key);
 
-	public abstract void setStatistics(NetworkStatistics networkStatistics);
-
 	public boolean isWifiConnected();
 
 	public boolean isInternetConnected();
@@ -70,28 +68,33 @@ public interface Network {
 
 	public boolean removeConnectedCallback(Callback<Boolean> callback);
 
-	public interface NetworkStatistics {
+	public interface RequestTimes {
+		//请求url
+		public URL getURL();
 
-		public void onHttpWaitDuration(URL path, long time);
+		//任务建立时间
+		public long getTaskCreateTime();
 
-		public void onHttpConnectDuration(URL path, long time);
+		//任务建立时间
+		public long getTaskStartTime();
 
-		public void onHttpHeaderDuration(URL path, long time);
+		//网络请求开始时间
+		public long getRequestStartTime();
 
-		public void onHttpNetworkDuration(URL path, long time);
+		//网络接收数据开始时间（ttl请求为零）
+		public long getDownloadStartTime();
 
-		public void onHttpCacheDuration(URL path, long time, boolean fromTtl);
+		//网络请求结束时间(etag cached 请求中，与getDownloadStartTime 相等，ttl请求为0)
+		public long getRequestEndTime();
 
-		public void onHttpCancelDuration(URL path, long time);
+		//数据预处理开始时间(isCache?缓存:网络)
+		public long getPrepareStartTime(boolean isCache);
 
-		public void onHttpDownloadError(URL path, Throwable exception);
+		//callback开始时间(isCache?缓存:网络)
+		public long getCallbackStartTime(boolean isCache);
 
-		public void onHttpParseError(URL path, Throwable exception);
-
-		public void onHttpCallbackError(URL path, Throwable exception);
-
-		public void onRedirectOut(String domain);
-
+		//callback结束时间(isCache?缓存:网络)
+		public long getCallbackEndTime(boolean isCache);
 	}
 
 	public enum HttpMethod {

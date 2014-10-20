@@ -23,6 +23,7 @@ import android.graphics.Movie;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.os.Looper;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -136,7 +137,7 @@ public class ImageSupport {
 		}
 
 		void doLoad() {
-			if (HttpUtil.currentHandler() == null) {
+			if (Looper.myLooper() != Looper.getMainLooper()) {
 				DebugLog.warn("post bind:" + url + " to ui thread!!");
 				view.post(new Runnable() {
 					@Override

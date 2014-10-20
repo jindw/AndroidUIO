@@ -9,18 +9,15 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.TimeZone;
 
 import org.xidea.el.json.JSONEncoder;
 
-import android.content.ContentValues;
 import android.util.Base64;
 
 import org.xidea.android.Callback;
@@ -28,8 +25,6 @@ import org.xidea.android.SQLiteMapper;
 import org.xidea.android.UIO;
 import org.xidea.android.impl.DebugLog;
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.Network.HttpMethod;
-import org.xidea.android.impl.Network.NetworkStatistics;
 import org.xidea.android.impl.io.DiskLruCache;
 import org.xidea.android.impl.io.StorageFactory;
 import org.xidea.android.impl.io.IOUtil;
@@ -57,8 +52,8 @@ public interface HttpCache {
 	public void removeCache(String uri) ;
 	public void updateCache(String uri,String content) ;
 	
-	public InputStream getWritebackStream(HttpCacheEntry entry, URLConnection conn,
-			Cancelable cancelState, long timeStart) throws IOException;
+	public InputStream getWritebackStream(HttpCacheEntry entry, URLConnection conn,InputStream in,
+			Cancelable cancelState) throws IOException;
 
 	public void addCacheHeaders(HttpCacheEntry entry, URLConnection conn)
 			throws IOException;
@@ -128,29 +123,10 @@ class HttpCacheImpl implements HttpCache {
 	}
 	
 	public InputStream getWritebackStream(final HttpCacheEntry entry,
-			final URLConnection conn, Cancelable cancelState,
-			final long timeStart) throws IOException {
-		URL url = conn.getURL();
-		NetworkStatistics networkStatistics = HttpSupport.INSTANCE
-				.getStatistics();
-		// log.timeStart();
-		HttpUtil.assertNotCanceled(conn, cancelState);
-		conn.connect();
-		HttpUtil.assertNotCanceled(conn, cancelState);
-		networkStatistics.onHttpConnectDuration(url, System.currentTimeMillis()
-				- timeStart);
-		// log.timeEnd("connect" + path);
-		InputStream in = HttpUtil.getInputStream(conn);//conn.getInputStream();
-		// log.timeEnd("get$" + in.available() + path);
-
+			final URLConnection conn, InputStream in,Cancelable cancelState) throws IOException {
 		final String charset = HttpUtil.guessCharset(conn);
 		if (charset != null) {
-			
 			String result = IOUtil.loadTextAndClose(in, entry.charset);
-			
-			networkStatistics.onHttpNetworkDuration(url,
-					System.currentTimeMillis() - timeStart);
-			// log.timeEnd("read" + path);
 			try{
 				initEntry(entry, conn,charset);
 				entry.responseBody = result;
@@ -165,13 +141,6 @@ class HttpCacheImpl implements HttpCache {
 				@Override
 				public void callback(Boolean success) {
 						if (success) {
-
-							URL url = conn.getURL();
-							final NetworkStatistics networkStatistics = HttpSupport.INSTANCE
-									.getStatistics();
-							networkStatistics.onHttpNetworkDuration(url,
-									System.currentTimeMillis() - timeStart);
-							// log.timeEnd("read" + path);
 							try {
 								initEntry(entry, conn,charset);
 								entry.responseBody = null;
