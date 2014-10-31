@@ -3,7 +3,6 @@ package org.xidea.android.test.image;
 import org.xidea.android.Callback;
 import org.xidea.android.DrawableFactory;
 import org.xidea.android.UIO;
-import org.xidea.android.impl.DefaultDrawableFactory;
 import org.xidea.android.impl.ui.BoxDrawableFactory;
 import org.xidea.android.test.MainActivity;
 import org.xidea.android.test.R;
@@ -17,7 +16,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 
 public class ImagePage extends Fragment{
@@ -47,15 +45,15 @@ public class ImagePage extends Fragment{
 					@Override
 					public void callback(Drawable result) {
 						if (result != null) {
-							Toast.makeText(getActivity(), "获取图片成功.", Toast.LENGTH_SHORT).show();
+							UIO.showTips("获取图片成功.");
 						}else {
-							Toast.makeText(getActivity(), "获取图片失败.", Toast.LENGTH_SHORT).show();
+							UIO.showTips("获取图片失败.");
 						}
 					}
 
 					@Override
 					public void error(Throwable ex, boolean callbackError) {
-						Toast.makeText(getActivity(), "获取图片失败.", Toast.LENGTH_SHORT).show();
+						UIO.showTips("获取图片失败.");
 						ex.printStackTrace();
 					}
 				});

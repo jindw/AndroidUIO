@@ -1,7 +1,5 @@
 package org.xidea.android.test.network;
 
-import java.util.HashMap;
-
 import org.json.JSONObject;
 import org.xidea.android.UIO;
 import org.xidea.android.Callback;
@@ -54,6 +52,7 @@ public class NetworkPage extends Fragment {
 			public void onClick(View v) {
 				String url = DemoUtil.getUserURL();;
 				UIO.get(new Callback<User>() {
+					@org.xidea.android.Callback.Loading( "Callback 装载中...")
 					@Override
 					public void callback(User user) {
 						setupUserInfo( user);
@@ -71,7 +70,7 @@ public class NetworkPage extends Fragment {
 
 			@Override
 			public void onClick(View v) {
-				String url = DemoUtil.getUserURL();;
+				final String url = DemoUtil.getUserURL();;
 				UIO.get(new Callback.PrepareCallback<JSONObject,User>() {
 					@Override
 					public Object prepare(JSONObject rawData) {
@@ -82,6 +81,7 @@ public class NetworkPage extends Fragment {
 						return user;
 					}
 					@Override
+					@org.xidea.android.Callback.Loading( "PrepareCallback 装载中...")
 					public void callback(User user) {
 						setupUserInfo(user);
 					}
@@ -101,7 +101,7 @@ public class NetworkPage extends Fragment {
 			public void onClick(View v) {
 				String url = DemoUtil.getUserURL();
 				UIO.get(new Callback.CacheCallback<User>() {
-					
+
 					@Override
 					public boolean cache(User cacheData) {
 						if (cacheData == null) {
@@ -113,6 +113,7 @@ public class NetworkPage extends Fragment {
 						return false;
 					}
 
+					@org.xidea.android.Callback.Loading( "CacheCallback 装载中...")
 					@Override
 					public void callback(User networkResult) {
 						if (networkResult == null) {

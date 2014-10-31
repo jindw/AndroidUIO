@@ -29,8 +29,10 @@ function writeConfig(){
 	//console.info('write back test-server.json')
 	fs.writeFile(__dirname+'/../assets/test-server.json',
 		JSON.stringify({
-			home:'http://'+ips[0]+':8080/',
-			createTime:+new Date()
+			imagePrefix:'http://'+ips[0]+':8080/assets/',
+			host:ips[0],
+			port:8080,
+			ips:ips
 		}))
 }
 /**
