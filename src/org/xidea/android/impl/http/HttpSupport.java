@@ -60,7 +60,6 @@ public class HttpSupport implements Network {
 		requestHeaders.put("Accept-Encoding", "gzip");
 	}
 
-
 	@Override
 	public Cancelable post(Callback<? extends Object> callback, String url,
 			Map<String, Object> postParams) {
@@ -86,9 +85,9 @@ public class HttpSupport implements Network {
 		if (extCache == null) {
 			// TODO: 监控SD卡
 			extCache = application.getCacheDir();
-			//内存紧张最多1M
-			cacheSize = Math.min(cacheSize, 1024*1024);
-		} 
+			// 内存紧张最多1M
+			cacheSize = Math.min(cacheSize, 1024 * 1024);
+		}
 		this.cacheDir = new File(extCache, "uio_http_cache");
 		this.cacheSize = cacheSize;
 	}
@@ -120,7 +119,6 @@ public class HttpSupport implements Network {
 	}
 
 	private NetworkState ns;
-
 
 	public boolean isWifiConnected() {
 		return ns.isWifiConnected();
@@ -165,11 +163,11 @@ public class HttpSupport implements Network {
 			return null;
 		}
 	}
+
 	public File loadFile(String url, boolean ignoreCache) {
 		try {
-			return getFile(HttpUtil.parseURL(url), HttpMethod.GET, null,
-					null, ignoreCache ? CachePolicy.NetworkOnly
-							: CachePolicy.Any);
+			return getFile(HttpUtil.parseURL(url), HttpMethod.GET, null, null,
+					ignoreCache ? CachePolicy.NetworkOnly : CachePolicy.Any);
 		} catch (IOException e) {
 			DebugLog.error(e);
 			return null;
@@ -186,10 +184,11 @@ public class HttpSupport implements Network {
 			return null;
 		}
 	}
+
 	public File loadCacheFile(String url) {
 		try {
-			return getFile(HttpUtil.parseURL(url), HttpMethod.GET, null,
-					null, CachePolicy.CacheOnly);
+			return getFile(HttpUtil.parseURL(url), HttpMethod.GET, null, null,
+					CachePolicy.CacheOnly);
 		} catch (IOException e) {
 			DebugLog.error(e);
 			return null;
@@ -232,7 +231,6 @@ public class HttpSupport implements Network {
 		cacheImpl.updateCache(id, content);
 	}
 
-
 	public InputStream getStream(URL url, HttpMethod method,
 			Map<String, Object> post, Cancelable cancelable, CachePolicy cache)
 			throws IOException {
@@ -240,9 +238,8 @@ public class HttpSupport implements Network {
 				post, InputStream.class);
 	}
 
-	public File getFile(URL url, HttpMethod method,
-			Map<String, Object> post, Cancelable cancelable, CachePolicy cache)
-			throws IOException {
+	public File getFile(URL url, HttpMethod method, Map<String, Object> post,
+			Cancelable cancelable, CachePolicy cache) throws IOException {
 		return new Request(url, cancelable, cache, true).doRequest(method,
 				post, File.class);
 	}
@@ -338,7 +335,6 @@ public class HttpSupport implements Network {
 		final boolean saveCache;
 
 		URLConnection conn;
-		// InputStream in;
 		HttpCacheEntry entry;
 		Object result;// 可以是，URLConnection，InputStream，String，HttpCacheEntry
 		final long[] requestTimes;
@@ -351,9 +347,9 @@ public class HttpSupport implements Network {
 			this.saveCache = saveCache;
 			this.cancelable = cancelState;
 
-			if(cancelable instanceof HttpAsynTaskImpl){
-				requestTimes = ((HttpAsynTaskImpl)cancelable).requestTimes;
-			}else{
+			if (cancelable instanceof HttpAsynTaskImpl) {
+				requestTimes = ((HttpAsynTaskImpl) cancelable).requestTimes;
+			} else {
 				requestTimes = new long[3];
 			}
 		}
@@ -362,28 +358,25 @@ public class HttpSupport implements Network {
 		public <T> T getResult(Class<T> type) throws IOException {
 			if (result instanceof URLConnection) {
 				result = load();
+				// }else{result instanceof HttpCacheEntry
+				//
 			}
-
 			if (result instanceof HttpCacheEntry) {
 				if (type == String.class) {
 					result = cacheImpl.getText((HttpCacheEntry) result);
-				} else if(type == File.class){
+				} else if (type == File.class) {
 					result = cacheImpl.getFile((HttpCacheEntry) result);
 				} else {
 					result = cacheImpl.getStream((HttpCacheEntry) result);
 				}
-			} else {
+			} else if (result instanceof InputStream) {
 				if (type == String.class) {
-					if (result instanceof InputStream) {
-						String encoding = HttpUtil.guessCharset(conn);
-						result = IOUtil.loadTextAndClose((InputStream) result,
-								encoding);
-					}
-				}else if(type == File.class){
-					if (result instanceof InputStream) {
-						((InputStream)result).skip(Integer.MAX_VALUE);
-						result = cacheImpl.getFile(this.entry);
-					}
+					String encoding = HttpUtil.guessCharset(conn);
+					result = IOUtil.loadTextAndClose((InputStream) result,
+							encoding);
+				} else if (type == File.class) {
+					((InputStream) result).skip(Integer.MAX_VALUE);
+					result = cacheImpl.getFile(this.entry);
 				}
 			}
 			return (T) result;
@@ -395,14 +388,13 @@ public class HttpSupport implements Network {
 			conn.connect();
 			InputStream in = HttpUtil.getInputStream(conn);
 			requestTimes[1] = System.currentTimeMillis();
-			InputStream result = new FilterInputStream(in) {
+			return new FilterInputStream(in) {
 				@Override
 				public void close() throws IOException {
 					requestTimes[2] = System.currentTimeMillis();
 					super.close();
 				}
 			};
-			return result;
 		}
 
 		<T> T doRequest(HttpMethod method, Map<String, Object> post,
@@ -494,14 +486,10 @@ public class HttpSupport implements Network {
 					entry = cacheImpl.require(uri);
 				}
 				InputStream in = load();
-				InputStream ws = cacheImpl.getWritebackStream(entry, conn, in,cancelable);
+				InputStream ws = cacheImpl.getWritebackStream(entry, conn, in,
+						cancelable);
 				result = (ws == null ? entry : ws);
 			}
 		}
-
-
 	}
-
-
-
 }

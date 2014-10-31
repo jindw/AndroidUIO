@@ -1,9 +1,9 @@
 package org.xidea.android.impl.http;
 
+import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.List;
-
 
 import android.app.Application;
 import android.content.BroadcastReceiver;
@@ -15,10 +15,12 @@ import android.net.NetworkInfo;
 import android.telephony.TelephonyManager;
 
 import org.xidea.android.Callback;
+import org.xidea.android.UIO;
+
 //import org.xidea.android.CommonLog;
 
-class NetworkState {
-//	private static CommonLog log = CommonLog.getLog(NetworkState.class);
+final class NetworkState {
+	// private static CommonLog log = CommonLog.getLog(NetworkState.class);
 
 	private int networkType;
 	private int mobileClass = -1;
@@ -35,10 +37,11 @@ class NetworkState {
 	private int networkSubtype;
 
 	private Application application;
-	
+
 	NetworkState(Application application) {
 		this.application = application;
 	}
+
 	public void addWifiCallback(Callback<Boolean> callback) {
 		synchronized (callbacksLock) {
 			wifiCallbacks.add(callback);
@@ -191,11 +194,11 @@ class NetworkState {
 			if (mobileClass != this.mobileClass) {
 				this.mobileClass = mobileClass;
 			}
-				synchronized (callbacksLock) {
-					for (Callback<Boolean> cb : connectedCallbacks) {
-						cb.callback(connected);
-					}
+			synchronized (callbacksLock) {
+				for (Callback<Boolean> cb : connectedCallbacks) {
+					cb.callback(connected);
 				}
+			}
 		}
 		if (wifiChanged) {
 			synchronized (callbacksLock) {
@@ -230,17 +233,24 @@ class NetworkState {
 	// }
 
 	public Proxy getProxy() {
-		if (this.wifiConnected) {
-			return null;
-		} else if (this.connected) {
-			if (proxy != null) {
-				return proxy[0];
+		if (this.connected) {
+			if (this.wifiConnected) {
+				return null;
 			}
-			
-//			return (proxy = new Proxy[] { android.net.Proxy.getDefaultProxy(this.application) })[0];
+			if (proxy == null) {
+				String defaultHost = android.net.Proxy.getDefaultHost();
+				int defaultPort = android.net.Proxy.getDefaultPort();
+				java.net.Proxy p = null;
+				if (defaultHost != null && defaultPort > 0) {
+					p = new java.net.Proxy(java.net.Proxy.Type.HTTP,
+							new InetSocketAddress(defaultHost, defaultPort));
+				}
+				proxy = new Proxy[] { p };
+			}
+
+			return proxy[0];
 		}
 		return null;
 	}
-	
-	
+
 }
