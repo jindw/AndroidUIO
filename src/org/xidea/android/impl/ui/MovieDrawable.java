@@ -7,7 +7,6 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
-import android.util.Log;
 
 public class MovieDrawable extends Drawable  implements Runnable, Animatable {
 	private Movie movie;

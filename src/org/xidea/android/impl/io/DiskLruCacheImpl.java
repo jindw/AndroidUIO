@@ -21,7 +21,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.xidea.android.Callback;
-import org.xidea.android.impl.DebugLog;
+import org.xidea.android.util.DebugLog;
 
 final class DiskLruCacheImpl implements Closeable, DiskLruCache {
 

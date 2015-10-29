@@ -7,7 +7,6 @@ import java.lang.annotation.Target;
 import java.util.List;
 
 
-import android.content.ContentValues;
 
 /**
  * 描述一个java类到sqlite的存储映射， 通过 {@link #getSQLiteStorage(Class)}自动实现。

@@ -12,22 +12,22 @@ import org.xidea.android.Callback.CacheCallback;
 import org.xidea.android.Callback.PrepareCallback;
 import org.xidea.android.DrawableFactory;
 import org.xidea.android.UIO;
-import org.xidea.android.impl.DebugLog;
-import org.xidea.android.impl.DefaultDrawableFactory;
-import org.xidea.android.impl.http.HttpSupport;
-import org.xidea.android.impl.http.HttpUtil;
+import org.xidea.android.impl.http.HttpSupportImpl;
+import org.xidea.android.util.DebugLog;
+import org.xidea.android.util.DefaultDrawableFactory;
+import org.xidea.android.util.UISupport;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Movie;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Looper;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
-public class ImageSupport {
+public class UISupportImpl implements UISupport {
 	private LinkedHashMap<String, CacheInfo> queue = new LinkedHashMap<String, CacheInfo>(
 			0, 0.75f, true);
 	private Object queueLock = new Object();
@@ -36,13 +36,28 @@ public class ImageSupport {
 	private int currentSize = 0;
 	private static DrawableFactory DEFAULT_FACTORY = new DefaultDrawableFactory();
 	private static int uioImageReservedId = 0xFFFFFFFF;// android.R.id.custom;
-	public static final ImageSupport INSTANCE = new ImageSupport();
+	public static final UISupport INSTANCE = new UISupportImpl();
 
-	private ImageSupport() {
+	private UISupportImpl() {
+	}
+	public Callback.Cancelable longTips(CharSequence message) {
+		return UIUtil.showTips(message, Toast.LENGTH_LONG);
 	}
 
+	public Callback.Cancelable shortTips(CharSequence message) {
+		return UIUtil.showTips(message, Toast.LENGTH_SHORT);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.xidea.android.impl.ui.ImageTools#bind(android.widget.ImageView,
+	 * java.lang.String, org.xidea.android.DrawableFactory, int,
+	 * org.xidea.android.Callback)
+	 */
+	@Override
 	public void bind(final ImageView view, final String url,
-			DrawableFactory factory, final int fallbackResource,
+			DrawableFactory factory, final Object fallbackResource,
 			final Callback<Drawable> callback) {
 		if (view == null) {
 			DebugLog.fatal("invalid view:" + view);
@@ -52,10 +67,15 @@ public class ImageSupport {
 			factory = DEFAULT_FACTORY;
 		}
 
-		new Loader(view, url, factory, callback, fallbackResource)
-				.doLoad();
+		new Loader(view, url, factory, callback, fallbackResource).doLoad();
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.xidea.android.impl.ui.ImageTools#clear(android.content.Context)
+	 */
+	@Override
 	public void clear(Context activity) {
 		if (currentSize > coreCapacity) {
 			synchronized (queueLock) {
@@ -76,8 +96,8 @@ public class ImageSupport {
 					}
 					if (remove) {
 						info.release();
-						DebugLog.warn("remove cache: url:"+info.url+"currentSize:"
-								+ currentSize);
+						DebugLog.warn("remove cache: url:" + info.url
+								+ "currentSize:" + currentSize);
 						it.remove();
 						currentSize -= info.size;
 						if (currentSize <= coreCapacity) {
@@ -89,6 +109,12 @@ public class ImageSupport {
 		}
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.xidea.android.impl.ui.ImageTools#clearAll()
+	 */
+	@Override
 	public void clearAll() {
 		DebugLog.warn("clear all");
 		synchronized (queueLock) {
@@ -100,8 +126,13 @@ public class ImageSupport {
 		}
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.xidea.android.impl.ui.ImageTools#removeCache(java.lang.String)
+	 */
 	public void removeCache(String path) {
-		HttpSupport.INSTANCE.removeCache(path);
+		HttpSupportImpl.INSTANCE.removeCache(path);
 		synchronized (queueLock) {
 			CacheInfo info = queue.remove(path);
 			if (info != null) {
@@ -109,26 +140,27 @@ public class ImageSupport {
 			}
 		}
 	}
+
 	class Loader implements PrepareCallback<File, Drawable>,
 			CacheCallback<Drawable>, Runnable {
-		
+
 		final ImageView view;
-		final String url;
+		String url;
 		final DrawableFactory factory;
 		final Callback<Drawable> callback;
 
 		private Drawable currentDrawable;
-		
+
 		private long cacheFileLength = 0;
 		private CacheInfo hitedMemCache;
-		private int fallbackResourceId;
+		private Object fallbackResourceId;
 
 		final static int STEP_CACHE_PREPARE = 0, STEP_CACHE = 2,
 				STEP_CALLBACK_PREPARE = 3, STEP_CALLBACK = 4;
 		int step;// 1:prepare,2:cache,3:prepare,4,callback
 
-		Loader(ImageView view, String url,
-				DrawableFactory factory, Callback<Drawable> callback, int resId) {
+		Loader(ImageView view, String url, DrawableFactory factory,
+				Callback<Drawable> callback, Object resId) {
 			this.view = view;
 			this.factory = factory == null ? DEFAULT_FACTORY : factory;
 			this.url = url;
@@ -147,7 +179,7 @@ public class ImageSupport {
 				});
 			} else if (url == null || url.length() == 0) {
 				DebugLog.warn("invalid url:" + url);
-				if(!useFallbackResource()){
+				if (!useFallbackResource()) {
 					view.setImageDrawable(null);
 				}
 				return;
@@ -163,17 +195,18 @@ public class ImageSupport {
 			}
 		}
 
-		public void addCache(String url,Object cache) {
+		public void addCache(String url, Object cache) {
 			if (cache != null) {
 				synchronized (queueLock) {
-					CacheInfo info = new CacheInfo(url,factory, cache, view);
+					CacheInfo info = new CacheInfo(url, factory, cache, view);
 					queue.put(url + '#' + System.identityHashCode(factory),
 							info);
 					int size = info.size;
 					currentSize += size;
 				}
 				if (currentSize > maxCapacity) {
-					DebugLog.warn("memmery clear on new image ! count:"+queue.size());
+					DebugLog.warn("memmery clear on new image ! count:"
+							+ queue.size());
 					clear(null);
 				}
 			}
@@ -259,19 +292,21 @@ public class ImageSupport {
 			}
 			try {
 				if (hitedMemCache == null && file != null && file.exists()) {
-					DebugLog.info("parse on "+(isCachePrepare?"cache:":"callback:")+file.getName());
-					Object data = ImageUtil.createMediaContent(new FileInputStream(
-							file), view, null, null);
+					DebugLog.info("parse on "
+							+ (isCachePrepare ? "cache:" : "callback:")
+							+ file.getName());
+					Object data = ImageUtil.createMediaContent(
+							new FileInputStream(file), view, null, null);
 					if (data != null) {
 						// 只要prepare了，bitmap的控制权就自动交给了系统。
 						if (data instanceof Bitmap) {
 							final Bitmap bitmap = factory
 									.prepare((Bitmap) data);
-							addCache(url,bitmap);
+							addCache(url, bitmap);
 							return factory.createDrawable(bitmap);
 						} else if (data instanceof Movie) {
 							final Movie cache = factory.prepare((Movie) data);
-							addCache(url,cache);
+							addCache(url, cache);
 							return factory.createDrawable(cache);
 						} else {
 							throw new RuntimeException(
@@ -290,15 +325,14 @@ public class ImageSupport {
 			return null;
 		}
 
-
 		private void updateImageDrawable(ImageView view, Drawable drawable) {
 			Drawable old = view.getDrawable();
 			if (old instanceof DefaultDrawableFactory.SafeBitmapDrawable) {
-				ImageUtil.release(((BitmapDrawable) old).getBitmap());
+				((DefaultDrawableFactory.SafeBitmapDrawable)old).release();
 			}
 			this.currentDrawable = drawable;
-			//DebugLog.info("set drawable:"+url+""+view+drawable);
-			if(drawable instanceof MovieDrawable){
+			// DebugLog.info("set drawable:"+url+""+view+drawable);
+			if (drawable instanceof MovieDrawable) {
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 					view.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
 				}
@@ -307,18 +341,30 @@ public class ImageSupport {
 		}
 
 		private boolean useFallbackResource() {
-			if (currentDrawable == null && fallbackResourceId >= 0) {
-				updateImageDrawable(view, null);
-				view.setImageResource(fallbackResourceId);
-				return true;
-			}else{
-				return false;
+
+			if (currentDrawable == null) {
+				if (fallbackResourceId instanceof Integer) {
+					if ((Integer) fallbackResourceId >= 0) {
+						updateImageDrawable(view, null);
+						view.setImageResource((Integer) fallbackResourceId);
+						fallbackResourceId = null;
+						return true;
+					}
+				}else if (fallbackResourceId instanceof String) {
+//					updateImageDrawable(view, null);
+//					view.setImageResource((Integer) fallbackResourceId);
+					this.url = (String)fallbackResourceId;
+					fallbackResourceId = null;
+					this.doLoad();
+					return true;
+				}
 			}
+			return false;
 		}
 
 		public void error(Throwable ex, boolean callbackError) {
 			if (DebugLog.isDebug()) {
-				UIFacade.getInstance().shortTips("图片装载失败：" + ex);
+				shortTips("图片装载失败：" + ex);
 			}
 			useFallbackResource();
 			if (callback != null) {
@@ -336,9 +382,9 @@ public class ImageSupport {
 		final Object cache;
 		final String url;
 		int activityMask;
-		
 
-		CacheInfo(String url,DrawableFactory factory, Object bitmap, ImageView view) {
+		CacheInfo(String url, DrawableFactory factory, Object bitmap,
+				ImageView view) {
 			this.url = url;
 			this.factory = factory;
 			this.cache = bitmap;

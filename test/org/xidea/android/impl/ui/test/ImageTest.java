@@ -13,7 +13,7 @@ import org.junit.runner.RunWith;
 import org.xidea.android.UIO;
 import org.xidea.android.Callback;
 import org.xidea.android.impl.AsynTask.AsynImpl;
-import org.xidea.android.impl.http.HttpSupport;
+import org.xidea.android.impl.http.HttpSupportImpl;
 import org.xidea.android.impl.AsynTask;
 import org.xidea.android.impl.io.IOUtil;
 import org.xidea.android.impl.ui.GifDecoder;
@@ -282,9 +282,9 @@ public class ImageTest extends BaseTest {
 
 	private List<AsynTask> getTaskList(String name)
 			throws NoSuchFieldException, IllegalAccessException {
-		Field field = HttpSupport.class.getDeclaredField("asyn");
+		Field field = HttpSupportImpl.class.getDeclaredField("asyn");
 		field.setAccessible(true);
-		Object asyn = field.get(HttpSupport.INSTANCE);
+		Object asyn = field.get(HttpSupportImpl.INSTANCE);
 		field = AsynImpl.class.getDeclaredField(name);
 		field.setAccessible(true);
 		List<AsynTask> runningTaskList = (List<AsynTask>) field.get(asyn);

@@ -1,6 +1,5 @@
 package org.xidea.android;
 
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -38,6 +37,7 @@ public interface Callback<ResultType> {
 
 	/**
 	 * 取消任务接口，比如 发起一个http请求， 会返回一个该对象， 然后我们可以在任意地点尝试取消这个请求。
+	 * 对于网络请求，cancel将触发清理请求对应的缓存的动作。
 	 * @author jindawei
 	 */
 	public interface Cancelable{
@@ -100,12 +100,6 @@ public interface Callback<ResultType> {
 		 * 任务被取消时，回调该接口
 		 */
 		void onCancelled();
-
-		/**
-		 * 下载文件时文件保存的路径和文件名
-		 * @return
-		 */
-		public String getSavePath();
 	}
 
 }

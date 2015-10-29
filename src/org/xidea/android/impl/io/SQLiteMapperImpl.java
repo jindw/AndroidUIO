@@ -19,7 +19,7 @@ import java.util.WeakHashMap;
 
 import org.xidea.android.Callback;
 import org.xidea.android.SQLiteMapper;
-import org.xidea.android.impl.DebugLog;
+import org.xidea.android.util.DebugLog;
 import org.xidea.el.impl.ReflectUtil;
 import org.xidea.el.json.JSONDecoder;
 import org.xidea.el.json.JSONEncoder;
@@ -30,7 +30,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
-public class SQLiteMapperImpl<T> extends SQLiteMapperAsynSupport<T> implements
+class SQLiteMapperImpl<T> extends SQLiteMapperAsynSupport<T> implements
 		SQLiteMapper<T> {
 	private SQLiteOpenHelper helper;
 	private String tableName;
@@ -563,7 +563,7 @@ public class SQLiteMapperImpl<T> extends SQLiteMapperAsynSupport<T> implements
 			String text = cursor.getString(i);
 			try {
 				if (text != null) {
-					value = new JSONDecoder(false).decode(text, fieldType);
+					value = JSONDecoder.decode(text, fieldType);
 				}
 			} catch (Exception e) {
 				DebugLog.error("数据转换失败:" + type, e);

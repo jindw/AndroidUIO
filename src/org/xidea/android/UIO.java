@@ -4,16 +4,19 @@ import java.io.InputStream;
 import java.util.Map;
 
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.http.HttpSupport;
-import org.xidea.android.impl.io.StorageFactory;
-import org.xidea.android.impl.ui.ImageSupport;
-import org.xidea.android.impl.ui.UIFacade;
+import org.xidea.android.impl.http.HttpSupportImpl;
+import org.xidea.android.impl.io.StorageFactoryImpl;
+import org.xidea.android.impl.ui.UISupportImpl;
+import org.xidea.android.util.UISupport;
+import org.xidea.android.util.NetworkSupport;
+import org.xidea.android.util.StorageFactory;
 
 import android.app.Application;
 import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
 
 public class UIO {
+
 
 	public static Cancelable get(Callback<? extends Object> callback, String url) {
 		Ext.assertInit();
@@ -28,26 +31,34 @@ public class UIO {
 
 	public static void bind(ImageView view, String url) {
 		Ext.assertInit();
-		Ext.image.bind(view, url, null, 0, null);
+		Ext.ui.bind(view, url, null, 0, null);
 	}
 
 	public static void bind(ImageView view, String url, int fallbackResource) {
 		Ext.assertInit();
-		Ext.image.bind(view, url, null, fallbackResource, null);
+		Ext.ui.bind(view, url, null, fallbackResource, null);
 	}
 
-	public static void bind(ImageView view, String url,
-			DrawableFactory factory, int fallbackResource) {
+	public static void bind(ImageView view, String url, String fallbackResource) {
 		Ext.assertInit();
-		Ext.image.bind(view, url, factory, fallbackResource, null);
+		Ext.ui.bind(view, url, null, fallbackResource, null);
 	}
+
 
 	public static void bind(ImageView view, String url,
 			DrawableFactory factory, int fallbackResource,
 			Callback<Drawable> callback) {
 		Ext.assertInit();
-		Ext.image.bind(view, url, factory, fallbackResource, callback);
+		Ext.ui.bind(view, url, factory, fallbackResource, callback);
 	}
+
+	public static void bind(ImageView view, String url,
+			DrawableFactory factory, String fallbackResource,
+			Callback<Drawable> callback) {
+		Ext.assertInit();
+		Ext.ui.bind(view, url, factory, fallbackResource, callback);
+	}
+
 
 	public static boolean isWifiConnected() {
 		Ext.assertInit();
@@ -98,12 +109,12 @@ public class UIO {
 
 	public static Cancelable showLongTips(CharSequence message) {
 		Ext.assertInit();
-		return UIFacade.getInstance().longTips(message);
+		return Ext.ui.longTips(message);
 	}
 
 	public static Cancelable showTips(CharSequence message) {
 		Ext.assertInit();
-		return UIFacade.getInstance().shortTips(message);
+		return Ext.ui.shortTips(message);
 	}
 
 	public static Application getApplication() {
@@ -112,11 +123,18 @@ public class UIO {
 	}
 
 	public static class Ext {
-		private static Application app = null;
-		private static HttpSupport http = HttpSupport.INSTANCE;
-		private static ImageSupport image = ImageSupport.INSTANCE;
-		private static StorageFactory storage = StorageFactory.INSTANCE;
 
+		private static Application app = null;
+		private static NetworkSupport http = HttpSupportImpl.INSTANCE;
+		private static UISupport ui = UISupportImpl.INSTANCE;
+		private static StorageFactory storage = StorageFactoryImpl.INSTANCE;
+
+		public static void init(Application application) {
+			if (application != null && app == null) {
+				app = application;
+				http.init(application, 1024 * 1024 * 16);
+			}
+		}
 		private Ext() {
 		}
 
@@ -162,12 +180,6 @@ public class UIO {
 			}
 		}
 
-		public static void init(Application application) {
-			if (application != null && app == null) {
-				app = application;
-				http.init(application, 1024 * 1024 * 16);
-			}
-		}
 	}
 
 }

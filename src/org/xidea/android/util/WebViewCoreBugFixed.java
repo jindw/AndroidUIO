@@ -1,10 +1,7 @@
-package org.xidea.android.impl.web;
+package org.xidea.android.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-
-import org.apache.commons.logging.Log;
-import org.xidea.android.impl.DebugLog;
 
 import android.os.Build;
 import android.os.Handler;

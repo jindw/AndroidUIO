@@ -12,7 +12,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.xidea.android.Callback;
-import org.xidea.android.impl.DebugLog;
+import org.xidea.android.util.DebugLog;
 
 class DiskLruCacheEntry {
 	final String key;

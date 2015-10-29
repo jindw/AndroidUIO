@@ -14,12 +14,12 @@ import org.xidea.android.Callback.CacheCallback;
 import org.xidea.android.Callback.Loading;
 import org.xidea.android.Callback.PrepareCallback;
 import org.xidea.android.impl.AsynTask;
-import org.xidea.android.impl.DebugLog;
-import org.xidea.android.impl.Network.CachePolicy;
-import org.xidea.android.impl.Network.HttpMethod;
-import org.xidea.android.impl.Network.RequestTimes;
 import org.xidea.android.impl.io.IOUtil;
 import org.xidea.android.impl.ui.ImageUtil;
+import org.xidea.android.util.DebugLog;
+import org.xidea.android.util.NetworkSupport.CachePolicy;
+import org.xidea.android.util.NetworkSupport.HttpMethod;
+import org.xidea.android.util.NetworkSupport.RequestTimes;
 import org.xidea.el.impl.ReflectUtil;
 
 import android.graphics.Bitmap;
@@ -37,7 +37,7 @@ class HttpAsynTaskImpl implements AsynTask,RequestTimes {
 	private long startedTime;
 	private final URL url;
 	private final HttpMethod method;
-	private final HttpSupport http;
+	private final HttpSupportImpl http;
 	private final Handler from = HttpUtil.currentHandler();
 	private final Type prepareType;
 	private final Type callbackType;
@@ -50,7 +50,7 @@ class HttpAsynTaskImpl implements AsynTask,RequestTimes {
 	final long[] cacheTimes= new long[3];
 	final long[] callbackTimes= new long[3];
 
-	public HttpAsynTaskImpl(HttpSupport http, String path, HttpMethod method,
+	public HttpAsynTaskImpl(HttpSupportImpl http, String path, HttpMethod method,
 			Callback<?> callback,Map<String,Object> postParams) {
 		this.http = http;
 		this.url = HttpUtil.parseURL(path);

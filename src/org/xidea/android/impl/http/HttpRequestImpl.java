@@ -1,7 +1,6 @@
 package org.xidea.android.impl.http;
 
 import java.io.IOException;
-
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
@@ -13,8 +12,8 @@ import java.util.Map;
 
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.Callback.Cancelable.CanceledException;
-import org.xidea.android.impl.DebugLog;
-import org.xidea.android.impl.Network.HttpMethod;
+import org.xidea.android.util.DebugLog;
+import org.xidea.android.util.NetworkSupport.HttpMethod;
 
 interface HttpRequest {
 	public URLConnection init(URL url, HttpMethod method,
@@ -46,7 +45,7 @@ class HttpRequestImpl implements HttpRequest {
 				e.printStackTrace();
 			}
 		}
-		Proxy proxy = HttpSupport.INSTANCE.getProxy();
+		Proxy proxy = HttpSupportImpl.INSTANCE.getProxy();
 		URLConnection conn = doInit(url, requestHeaders, cancelState, proxy);
 		return conn;
 	}

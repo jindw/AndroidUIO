@@ -6,14 +6,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 
-import android.content.ContentValues;
 import android.os.Handler;
 import android.os.Looper;
 
 import org.xidea.android.Callback;
 import org.xidea.android.SQLiteMapper;
 
-public abstract class SQLiteMapperAsynSupport<T> implements SQLiteMapper<T>{
+abstract class SQLiteMapperAsynSupport<T> implements SQLiteMapper<T>{
 
 	private static ExecutorService executorService = Executors
 			.newSingleThreadScheduledExecutor();

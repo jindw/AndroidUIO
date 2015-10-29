@@ -9,19 +9,24 @@ import android.content.Context;
 
 import org.xidea.android.KeyValueStorage;
 import org.xidea.android.SQLiteMapper;
-import org.xidea.android.impl.DebugLog;
+import org.xidea.android.util.DebugLog;
+import org.xidea.android.util.StorageFactory;
 
-public class StorageFactory {
+public class StorageFactoryImpl implements StorageFactory {
 	private Map<Object, Object> cache = new HashMap<Object, Object>();
 
-	protected StorageFactory() {
+	protected StorageFactoryImpl() {
 	}
 
 	/**
 	 * @hide
 	 */
-	public static final StorageFactory INSTANCE = new StorageFactory();
+	public static final StorageFactoryImpl INSTANCE = new StorageFactoryImpl();
 
+	/* (non-Javadoc)
+	 * @see org.xidea.android.impl.io.StorageFactory#getSQLiteStorage(java.lang.Class, android.content.Context)
+	 */
+	@Override
 	@SuppressWarnings("unchecked")
 	public <T> SQLiteMapper<T> getSQLiteStorage(Class<T> type,
 			Context application) {
@@ -41,6 +46,10 @@ public class StorageFactory {
 	}
 	
 
+	/* (non-Javadoc)
+	 * @see org.xidea.android.impl.io.StorageFactory#getKeyValueStroage(java.lang.Class, android.content.Context)
+	 */
+	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends KeyValueStorage<?>> T getKeyValueStroage(Class<T> type,
 			Context application) {

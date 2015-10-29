@@ -17,7 +17,7 @@ import android.util.DisplayMetrics;
 import android.util.TypedValue;
 
 
-public class BoxDrawableFactory extends org.xidea.android.impl.DefaultDrawableFactory {
+public class BoxDrawableFactory extends org.xidea.android.util.DefaultDrawableFactory {
 	private static final Resources RESOURCES = UIO.getApplication().getResources();
 
 	public BoxDrawableFactory(float radiusDip) {

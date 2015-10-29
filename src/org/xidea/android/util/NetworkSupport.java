@@ -1,4 +1,4 @@
-package org.xidea.android.impl;
+package org.xidea.android.util;
 
 import java.io.InputStream;
 import java.net.Proxy;
@@ -7,15 +7,25 @@ import java.util.Map;
 
 import org.xidea.android.Callback;
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.http.HttpSupport;
+import org.xidea.android.impl.AsynTask;
+import org.xidea.android.impl.http.HttpSupportImpl;
+
+import android.app.Application;
 
 /**
- * @see HttpSupport
+ * @see HttpSupportImpl
  * @author jindawei
  * 
  */
-public interface Network {
+public interface NetworkSupport {
 
+	/**
+	 * 初始化网络模块
+	 * 
+	 * @param application
+	 * @param memCacheSize
+	 */
+	public void init(Application application, int memCacheSize);
 	/**
 	 * 发起异步get请求，callback也将在发起线程执行（如果是ui线程发起的调换用，callback将在ui线程回调，可以直接操作ui）
 	 * 
@@ -104,5 +114,6 @@ public interface Network {
 	public enum CachePolicy {
 		CacheOnly, NetworkOnly, Any
 	}
+
 
 }

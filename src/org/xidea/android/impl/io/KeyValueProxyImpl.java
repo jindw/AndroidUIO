@@ -11,7 +11,7 @@ import java.util.Set;
 
 import org.xidea.android.KeyValueStorage;
 import org.xidea.android.KeyValueStorage.DefaultValue;
-import org.xidea.android.impl.DebugLog;
+import org.xidea.android.util.DebugLog;
 import org.xidea.el.Invocable;
 import org.xidea.el.impl.ReflectUtil;
 import org.xidea.el.json.JSONDecoder;

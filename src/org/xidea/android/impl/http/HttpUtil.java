@@ -33,9 +33,9 @@ import org.xidea.android.Callback;
 import org.xidea.android.Callback.Cancelable.CanceledException;
 import org.xidea.android.Callback.PrepareCallback;
 import org.xidea.android.UIO;
-import org.xidea.android.impl.DebugLog;
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.ui.UIFacade;
+import org.xidea.android.impl.ui.UISupportImpl;
+import org.xidea.android.util.DebugLog;
 import org.xidea.el.ExpressionSyntaxException;
 import org.xidea.el.impl.ReflectUtil;
 import org.xidea.el.json.JSONDecoder;
@@ -43,7 +43,7 @@ import org.xidea.el.json.JSONDecoder;
 import android.os.Handler;
 import android.os.Looper;
 
-public abstract class HttpUtil {
+abstract class HttpUtil {
 
 	final static Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 	private static final String ANDROID_ASSET = "/android_asset/";
@@ -395,7 +395,7 @@ public abstract class HttpUtil {
 
 
 	static void showNetworkTips(String msg) {
-		UIFacade.getInstance().shortTips(msg);
+		UISupportImpl.INSTANCE.shortTips(msg);
 	}
 
 	static void trustConnection(URLConnection conn) {

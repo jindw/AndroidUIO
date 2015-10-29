@@ -15,13 +15,8 @@ import android.net.NetworkInfo;
 import android.telephony.TelephonyManager;
 
 import org.xidea.android.Callback;
-import org.xidea.android.UIO;
-
-//import org.xidea.android.CommonLog;
 
 final class NetworkState {
-	// private static CommonLog log = CommonLog.getLog(NetworkState.class);
-
 	private int networkType;
 	private int mobileClass = -1;
 	private boolean connected;
@@ -238,7 +233,9 @@ final class NetworkState {
 				return null;
 			}
 			if (proxy == null) {
+				@SuppressWarnings("deprecation")
 				String defaultHost = android.net.Proxy.getDefaultHost();
+				@SuppressWarnings("deprecation")
 				int defaultPort = android.net.Proxy.getDefaultPort();
 				java.net.Proxy p = null;
 				if (defaultHost != null && defaultPort > 0) {

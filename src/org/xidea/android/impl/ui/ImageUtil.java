@@ -1,13 +1,8 @@
 package org.xidea.android.impl.ui;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.regex.Pattern;
 
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -19,23 +14,19 @@ import android.util.DisplayMetrics;
 import android.util.SparseIntArray;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
+import android.widget.Toast;
 
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.UIO;
-import org.xidea.android.impl.DebugLog;
-import org.xidea.android.impl.Network.CachePolicy;
-import org.xidea.android.impl.Network.HttpMethod;
-import org.xidea.android.impl.http.HttpSupport;
-import org.xidea.android.impl.http.HttpUtil;
-import org.xidea.android.impl.io.IOUtil;
+import org.xidea.android.util.DebugLog;
 
 public final class ImageUtil {
 	private static final int IMAGE_HEADER_BUFFER = 1024 * 1024;
 	public static final boolean GC_IGNORED_BITMAP = Build.VERSION.SDK_INT <= 10;
 	private static SparseIntArray bitmapRefMap = new SparseIntArray();
 	private static final Config COLOR_TYPE = Bitmap.Config.ARGB_8888;
-	private static Pattern URL_PATTERN = Pattern.compile(
-			"^(?:https?|ftp|file)\\:\\/", Pattern.CASE_INSENSITIVE);
+//	private static Pattern URL_PATTERN = Pattern.compile(
+//			"^(?:https?|ftp|file)\\:\\/", Pattern.CASE_INSENSITIVE);
 	private static int maxSide;
 
 	private ImageUtil() {
@@ -169,8 +160,8 @@ public final class ImageUtil {
 			maxHeight = getMaxSide();
 		}
 		if (DebugLog.isDebug() && (width > 200 || height > 200)) {
-			UIFacade.getInstance().shortTips(
-					"正在解码大图片(" + width + ',' + height + ")，请QA确认此处是否需要换成缩略图！");
+			UIUtil.showTips(
+					"正在解码大图片(" + width + ',' + height + ")，请QA确认此处是否需要换成缩略图！",Toast.LENGTH_LONG);
 		}
 		if (width > maxWidth || height > maxHeight) { // 防止内存溢出
 			final float scale = Math.max((float) width / maxWidth, (float) height
@@ -216,7 +207,7 @@ public final class ImageUtil {
 			}
 		}
 		if (!bitmap.isRecycled()) {
-			//bitmap.recycle();
+			bitmap.recycle();
 		}
 	}
 }

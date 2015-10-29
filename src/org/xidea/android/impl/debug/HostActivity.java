@@ -9,9 +9,7 @@ import java.lang.reflect.Method;
 
 import org.xidea.android.UIO;
 
-
 import dalvik.system.DexClassLoader;
-
 import android.os.Bundle;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
@@ -79,8 +77,10 @@ public class HostActivity extends FragmentActivity {
 		try {
 //			String libPath = "/data/data/com.example.ahost/lib";
 			{
+				@SuppressWarnings("rawtypes")
 				Class clazz = dexClassLoader
 						.loadClass("org.xidea.assistant.client.MainActivity");
+				@SuppressWarnings("unchecked")
 				Method method = clazz.getDeclaredMethod("init",
 						FragmentActivity.class, Resources.class);
 				method.setAccessible(true);

@@ -10,8 +10,8 @@ import java.util.concurrent.Executors;
 import org.xidea.android.Callback;
 import org.xidea.android.Callback.CacheCallback;
 import org.xidea.android.Callback.Cancelable;
-import org.xidea.android.impl.Network.CachePolicy;
-import org.xidea.android.impl.http.LoadingImpl;
+import org.xidea.android.util.DebugLog;
+import org.xidea.android.util.NetworkSupport.CachePolicy;
 
 public interface AsynTask extends Cancelable {
 	void onStart();

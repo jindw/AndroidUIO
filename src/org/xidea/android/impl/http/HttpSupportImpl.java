@@ -5,10 +5,10 @@ import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.Callback.Cancelable.CanceledException;
 import org.xidea.android.impl.AsynTask.AsynImpl;
 import org.xidea.android.impl.AsynTask;
-import org.xidea.android.impl.DebugLog;
-import org.xidea.android.impl.Network;
 import org.xidea.android.impl.http.HttpUtil.RedirectOutException;
 import org.xidea.android.impl.io.IOUtil;
+import org.xidea.android.util.DebugLog;
+import org.xidea.android.util.NetworkSupport;
 
 import android.app.Application;
 import android.os.Build;
@@ -17,7 +17,6 @@ import java.io.File;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URI;
@@ -28,7 +27,7 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HttpSupport implements Network {
+public class HttpSupportImpl implements NetworkSupport {
 
 	private static final String NETWORK_UNAVALIABLE = "网络暂无法连接， 请检查网络后再尝试！";
 	private static final int WIFI_TRY_COUNT = 2;
@@ -42,7 +41,7 @@ public class HttpSupport implements Network {
 		HttpURLConnection.setFollowRedirects(false);
 	}
 
-	public static HttpSupport INSTANCE = new HttpSupport();
+	public static HttpSupportImpl INSTANCE = new HttpSupportImpl();
 	private File cacheDir;
 	private int cacheSize;
 	private HttpCache cacheImpl;
@@ -64,13 +63,13 @@ public class HttpSupport implements Network {
 	public Cancelable post(Callback<? extends Object> callback, String url,
 			Map<String, Object> postParams) {
 		return dispatchRequest(new HttpAsynTaskImpl(this, url,
-				Network.HttpMethod.POST, callback, postParams));
+				NetworkSupport.HttpMethod.POST, callback, postParams));
 	}
 
 	@Override
 	public Cancelable get(Callback<? extends Object> callback, String url) {
 		return dispatchRequest(new HttpAsynTaskImpl(this, url,
-				Network.HttpMethod.GET, callback, null));
+				NetworkSupport.HttpMethod.GET, callback, null));
 	}
 
 	@Override

@@ -1,4 +1,4 @@
-package org.xidea.android.impl;
+package org.xidea.android.util;
 
 import java.io.ByteArrayOutputStream;
 
@@ -28,7 +28,7 @@ public class DebugLog {
 
 	private static boolean isDebugging() {
 		try{
-		return Debug.isDebuggerConnected();
+			return Debug.isDebuggerConnected();
 		}catch(Throwable e){
 			return true;
 		}
@@ -164,7 +164,6 @@ public class DebugLog {
 				}
 				Log.println(level, tag, text);
 				//System.out.println(tag + ':' + text);
-
 			}
 		} catch (Throwable e) {
 			//e.printStackTrace();

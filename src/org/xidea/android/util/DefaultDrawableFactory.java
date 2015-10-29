@@ -1,4 +1,4 @@
-package org.xidea.android.impl;
+package org.xidea.android.util;
 
 import org.xidea.android.DrawableFactory;
 import org.xidea.android.UIO;
@@ -116,9 +116,9 @@ class LoadingDrawable extends Drawable  implements Runnable, Animatable {
 		if(base!=null){
 			base.draw(canvas);
 		}
-		float degrees = ((float)System.currentTimeMillis())/1000;
-		float px = 0;
-		float py = 0;
+//		float degrees = ((float)System.currentTimeMillis())/1000;
+//		float px = 0;
+//		float py = 0;
 
         int saveCount = canvas.save();
 		//canvas.rotate(degrees,px,py);

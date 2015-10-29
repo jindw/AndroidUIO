@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
@@ -23,15 +22,15 @@ import android.util.Base64;
 import org.xidea.android.Callback;
 import org.xidea.android.SQLiteMapper;
 import org.xidea.android.UIO;
-import org.xidea.android.impl.DebugLog;
 import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.impl.io.DiskLruCache;
-import org.xidea.android.impl.io.StorageFactory;
+import org.xidea.android.impl.io.StorageFactoryImpl;
 import org.xidea.android.impl.io.IOUtil;
+import org.xidea.android.util.DebugLog;
 
 
 
-public interface HttpCache {
+interface HttpCache {
 	public HttpCacheEntry require(URI url);
 
 	public InputStream getStream(HttpCacheEntry entry)
@@ -67,7 +66,7 @@ class HttpCacheImpl implements HttpCache {
 	private Object lock = new Object();
 
 	public HttpCacheImpl(File dir, long maxCacheSize) throws IOException {
-		cache = StorageFactory.INSTANCE.openCache(dir,  maxCacheSize,MAX_COUNT);
+		cache = StorageFactoryImpl.INSTANCE.openCache(dir,  maxCacheSize,MAX_COUNT);
 		mapper = UIO.getSQLiteStorage(HttpCacheEntry.class);// new
 	}
 
@@ -167,7 +166,7 @@ class HttpCacheImpl implements HttpCache {
 		entry.responseHeaders = JSONEncoder.encode(conn.getHeaderFields());
 		if(DebugLog.isDebug()){
 			DebugLog.warn(entry.uri+"\n"+entry.responseHeaders);
-			HashMap<String, String> map = new HashMap<String,String>(HttpSupport.INSTANCE.requestHeaders);
+			HashMap<String, String> map = new HashMap<String,String>(HttpSupportImpl.INSTANCE.requestHeaders);
 			map.put("Cookie", conn.getRequestProperty("Cookie"));
 			
 			entry.requestHeaders = JSONEncoder.encode(map);

@@ -7,7 +7,6 @@ import java.net.URI;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
@@ -19,9 +18,9 @@ import android.util.Base64;
 
 import org.xidea.android.SQLiteMapper;
 import org.xidea.android.UIO;
-import org.xidea.android.impl.DebugLog;
 import org.xidea.android.impl.http.HttpCacheEntry;
 import org.xidea.android.impl.io.IOUtil;
+import org.xidea.android.util.DebugLog;
 
 class DebugProvider extends ContentProvider {
 	private static final int MAX_SIZE = 40;

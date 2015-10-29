@@ -1,13 +1,10 @@
 package org.xidea.android.impl.http;
 
-import java.util.LinkedHashMap;
 import java.util.WeakHashMap;
 
-import org.xidea.android.Callback.Cancelable;
 import org.xidea.android.Callback.Loading;
 import org.xidea.android.UIO;
 import org.xidea.android.impl.AsynTask;
-import org.xidea.android.impl.ui.UIFacade;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -18,10 +15,8 @@ import android.graphics.PathEffect;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.RectShape;
 import android.os.Looper;
-import android.os.Message;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
@@ -29,7 +24,7 @@ import android.widget.LinearLayout.LayoutParams;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-public class LoadingImpl {
+class LoadingImpl {
 	private static Dialog dialog = null;
 	private static WeakHashMap<AsynTask, String> tasks = new WeakHashMap<AsynTask, String>();
 	private static AsynTask currentLoading = null;
@@ -124,7 +119,7 @@ public class LoadingImpl {
 
 		ShapeDrawable drawable = new ShapeDrawable(new RectShape());
 		// drawable.getPaint().setColor(Color.BLACK);
-		PathEffect effect = new CornerPathEffect(UIFacade.dip2px(5));
+		PathEffect effect = new CornerPathEffect(dip2px(5));
 		drawable.getPaint().setPathEffect(effect);
 
 		LinearLayout layout = new LinearLayout(context);
@@ -137,22 +132,27 @@ public class LoadingImpl {
 
 		ProgressBar bar = new ProgressBar(context, null,
 				android.R.attr.progressBarStyle);
-		params = new LayoutParams(UIFacade.dip2px(35), UIFacade.dip2px(35));
-		params.setMargins(UIFacade.dip2px(20), UIFacade.dip2px(20),
-				UIFacade.dip2px(10), UIFacade.dip2px(20));
+		params = new LayoutParams(dip2px(35), dip2px(35));
+		params.setMargins(dip2px(20), dip2px(20),
+				dip2px(10), dip2px(20));
 		bar.setLayoutParams(params);
 		layout.addView(bar);
 
 		TextView textView = new TextView(context);
 		params = new LayoutParams(LayoutParams.WRAP_CONTENT,
 				LayoutParams.WRAP_CONTENT);
-		params.setMargins(UIFacade.dip2px(10), UIFacade.dip2px(20),
-				UIFacade.dip2px(40), UIFacade.dip2px(20));
+		params.setMargins(dip2px(10), dip2px(20),
+				dip2px(40), dip2px(20));
 		textView.setLayoutParams(params);
 		textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
 		layout.addView(textView);
 		dialog.setContentView(layout);
 		return textView;
+	}
+
+	public static int dip2px(float dipValue) {
+		final float scale = UIO.getApplication().getResources().getDisplayMetrics().density;
+		return (int) (dipValue * scale + 0.5f);
 	}
 
 }
