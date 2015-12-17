@@ -2,6 +2,7 @@ package org.xidea.android.impl.io;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,7 +20,7 @@ abstract class SQLiteMapperAsynSupport<T> implements SQLiteMapper<T>{
 
 	enum COMMAND {
 		SAVE, QUERY, UPDATE, 
-		//UPDATE_CONTENT,
+		UPDATE_CONTENT,
 		REMOVE,SAVE_BAT,GET,GET_BY_KEY
 	}
 
@@ -51,11 +52,11 @@ abstract class SQLiteMapperAsynSupport<T> implements SQLiteMapper<T>{
 		return this;
 	}
 
-//	@Override
-//	public SQLiteMapper<T> update(Callback<Boolean> callback, ContentValues contents) {
-//		invoke(callback, contents, null, COMMAND.UPDATE_CONTENT);
-//		return this;
-//	}
+	@Override
+	public SQLiteMapper<T> update(Callback<Boolean> callback, Map<String,Object> contents) {
+		invoke(callback, contents, null, COMMAND.UPDATE_CONTENT);
+		return this;
+	}
 
 	private void invoke(@SuppressWarnings("rawtypes") final Callback callback,
 			final Object arg1, final Object arg2, final COMMAND m) {
@@ -78,9 +79,9 @@ abstract class SQLiteMapperAsynSupport<T> implements SQLiteMapper<T>{
 					case UPDATE:
 						data = update((T) arg1);
 						break;
-//					case UPDATE_CONTENT:
-//						data = update((ContentValues) arg1);
-//						break;
+					case UPDATE_CONTENT:
+						data = update((Map<String,Object>) arg1);
+						break;
 					case REMOVE:
 						data = remove( arg1);
 						break;

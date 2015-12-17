@@ -80,14 +80,6 @@ public class HttpSupportImpl implements NetworkSupport {
 
 	public void init(final Application application, int cacheSize) {
 		ns = new NetworkState(application);
-		File extCache = application.getExternalCacheDir();
-		if (extCache == null) {
-			// TODO: 监控SD卡
-			extCache = application.getCacheDir();
-			// 内存紧张最多1M
-			cacheSize = Math.min(cacheSize, 1024 * 1024);
-		}
-		this.cacheDir = new File(extCache, "uio_http_cache");
 		this.cacheSize = cacheSize;
 	}
 
@@ -96,7 +88,14 @@ public class HttpSupportImpl implements NetworkSupport {
 			if (cacheImpl == null && cacheDir != null
 					&& (cacheDir.exists() || cacheDir.mkdirs())) {
 				try {
-
+					File extCache = ns.application.getExternalCacheDir();
+					if (extCache == null) {
+						// TODO: 监控SD卡
+						extCache = ns.application.getCacheDir();
+						// 内存紧张最多1M
+						cacheSize = Math.min(cacheSize, 1024 * 1024);
+					}
+					this.cacheDir = new File(extCache, "uio_http_cache");
 					this.cacheDir.mkdir();
 					cacheImpl = new HttpCacheImpl(cacheDir, cacheSize);
 				} catch (Exception e) {

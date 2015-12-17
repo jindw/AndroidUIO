@@ -63,12 +63,6 @@ public class DebugLog {
 	}
 	private static int logLevel = Log.VERBOSE;
 
-	private static String generateTag(StackTraceElement caller) {
-		String callerClazzName = caller.getClassName();
-		String tag = callerClazzName.substring(callerClazzName.lastIndexOf(".") + 1);
-		return tag.length() > 23 ? tag.substring(0, 20) + "..." : tag;
-	}
-
 	public static void trace(Object msg, Throwable th) {
 		log(Log.VERBOSE, msg, th);
 	}
@@ -143,6 +137,12 @@ public class DebugLog {
 	private static final int NS_PER_MS = 1000000;
 	private static final int NS_PER_S = 1000000000;
 
+
+	private static String generateTag(StackTraceElement caller) {
+		String callerClazzName = caller.getClassName();
+		String tag = callerClazzName.substring(callerClazzName.lastIndexOf(".") + 1);
+		return tag.length() > 23 ? tag.substring(0, 20) + "..." : tag;
+	}
 
 	private static void log(int level, Object msg, Throwable th) {
 		if (level < logLevel || !isDebug() ) return;

@@ -5,6 +5,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import java.util.Map;
+
 
 
 
@@ -108,9 +110,9 @@ public interface SQLiteMapper<T> {
 	public abstract SQLiteMapper<T> save(Callback<List<T>> callback,List<T> t);
 
 	public abstract boolean update(T t);
-//	public abstract boolean update(ContentValues contents);
+	public abstract boolean update(Map<String,Object> contents);
 	public abstract SQLiteMapper<T> update(Callback<Boolean> callback,T t);
-//	public abstract SQLiteMapper<T> update(Callback<Boolean> callback,ContentValues contents);
+	public abstract SQLiteMapper<T> update(Callback<Boolean> callback,Map<String,Object> contents);
 
 	public abstract boolean remove(Object id);
 	public abstract SQLiteMapper<T> remove(Callback<Boolean> callback,Object id);
@@ -118,6 +120,7 @@ public interface SQLiteMapper<T> {
 	
 	/**
 	 * 属性注解， 注解内容为对应sqlite 字段定义（字段名除外）
+	 * 主键 需要申明 SQLiteProperty("PRIMARY KEY")
 	 */
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.FIELD})
@@ -141,7 +144,7 @@ public interface SQLiteMapper<T> {
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
 	public @interface SQLiteUpdate{
-		public int value();
+		public int[] value();
 	}
 
 }

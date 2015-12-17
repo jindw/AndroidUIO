@@ -12,8 +12,6 @@ public interface TaskService {
 	 * 1. 支持周周期+工作休息日任务（闹钟）
 	 *    支持节假日，年周期任务（生日提醒，阴历阳历，春运购票提醒等等）
 	 * 2. 支持地理位置路过提醒
-	 * @author jinjinyun
-	 *
 	 */
 	public static class Task{
 		public int repeatDay;
@@ -21,7 +19,7 @@ public interface TaskService {
 		public int dateEnd;//每天结束时间
 		
 		
-		//阴历： -101，-12:29，-1200（春节）  -2801(润8月 -2000)
+		//阴历： -101（春节），-12:29，-1200  -2801(润8月 -2000)
 		public int date;
 		public String id;
 		public String action;

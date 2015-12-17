@@ -86,7 +86,7 @@
 				<exclude name="org/robolectric/**"/>
 			</fileset>
 		</jar>
-		<copy file="bin/UIO.jar" todir="../AndroidTest/libs"/>
+		<copy file="bin/UIO.jar" todir="../Assistant/libs"/>
 	</target>
 	
 

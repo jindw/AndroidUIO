@@ -23,8 +23,12 @@ public class StorageFactoryImpl implements StorageFactory {
 	 */
 	public static final StorageFactoryImpl INSTANCE = new StorageFactoryImpl();
 
-	/* (non-Javadoc)
-	 * @see org.xidea.android.impl.io.StorageFactory#getSQLiteStorage(java.lang.Class, android.content.Context)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.xidea.android.impl.io.StorageFactory#getSQLiteStorage(java.lang.Class
+	 * , android.content.Context)
 	 */
 	@Override
 	@SuppressWarnings("unchecked")
@@ -44,34 +48,43 @@ public class StorageFactoryImpl implements StorageFactory {
 		return impl;
 
 	}
-	
 
-	/* (non-Javadoc)
-	 * @see org.xidea.android.impl.io.StorageFactory#getKeyValueStroage(java.lang.Class, android.content.Context)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.xidea.android.impl.io.StorageFactory#getKeyValueStroage(java.lang
+	 * .Class, android.content.Context)
 	 */
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends KeyValueStorage<?>> T getKeyValueStroage(Class<T> type,
 			Context application) {
-		if (!type.isInterface()) {
-			DebugLog.error("getKeyValueStroage  must be a interface class！"
-					+ type);
-		}
 		T impl = (T) cache.get(type);
 		if (impl == null) {
 			synchronized (cache) {
 				impl = (T) cache.get(type);
+				Class<?>[] impls ;
+				if (type.isInterface()) {
+					impls = type.getClasses();
+				}else{
+					impls = new Class[]{type};
+				}
 				if (impl == null) {
-					String key;
-					try {
-						KeyValueStorage.StorageKey field = type
-								.getAnnotation(KeyValueStorage.StorageKey.class);
-						key = (String) field.value();
-					} catch (Exception e) {
-						key = type.getName();
+					for (Class<?> sub : impls) {
+						if (type.isAssignableFrom(sub)) {
+							try {
+								impl = (T) type.newInstance();
+								break;
+							} catch (Exception e) {
+								DebugLog.error(e);
+							}
+						}
 					}
-					impl = KeyValueProxyImpl.create(type,
-							application, key);
+					if (impl == null) {
+						String key = KeyValueImpl.getStorageKey(type);
+						impl = KeyValueProxyImpl.create(type, application, key);
+					}
 					cache.put(type, impl);
 				}
 			}
@@ -79,10 +92,11 @@ public class StorageFactoryImpl implements StorageFactory {
 		return impl;
 	}
 
-	public DiskLruCache openCache(File dir, long maxCacheSize, int maxCount) throws IOException{
-			if (!dir.exists()) {
-				dir.mkdirs();
-			}
-			return new DiskLruCacheImpl(dir, maxCacheSize, maxCount);
+	public DiskLruCache openCache(File dir, long maxCacheSize, int maxCount)
+			throws IOException {
+		if (!dir.exists()) {
+			dir.mkdirs();
+		}
+		return new DiskLruCacheImpl(dir, maxCacheSize, maxCount);
 	}
 }

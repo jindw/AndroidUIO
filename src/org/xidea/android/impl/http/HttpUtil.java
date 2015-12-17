@@ -15,6 +15,12 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,8 +29,11 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import javax.net.SocketFactory;
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -40,6 +49,8 @@ import org.xidea.el.ExpressionSyntaxException;
 import org.xidea.el.impl.ReflectUtil;
 import org.xidea.el.json.JSONDecoder;
 
+import android.net.SSLCertificateSocketFactory;
+import android.net.SSLSessionCache;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -53,19 +64,19 @@ abstract class HttpUtil {
 			.getBytes();
 	// static final String DEFAULT_CHARSET = "UTF-8";
 	private static final JSONDecoder JSON_DECODER = new JSONDecoder(false);
-	private static Pattern CHARSET = Pattern.compile(".*?;\\s*charset=([\\w\\-]+).*?");
+	private static Pattern CHARSET = Pattern
+			.compile(".*?;\\s*charset=([\\w\\-]+).*?");
 	private static Pattern UTF8_DEFAULT_CONTENT_TYPE = Pattern
 			.compile("^(?:application\\/json|text\\/json)");
 	private static Pattern STRING_CONTENT_TYPE = Pattern
 			.compile("^(?:application\\/os-stream|image\\/.*)");
 	private static Pattern TEXT_CONTENT_TYPE = Pattern.compile("^text\\/.*");
-	
 
 	private static final Pattern COOKIE_ENTRY = Pattern
 			.compile("(?:^|;\\s*)([\\w\\.\\-\\_\\$]+)(?:=([^;]+))");
 
 	private static HashMap<Type, Type[]> callbackTypeMap = new HashMap<Type, Type[]>();
-	private static SSLSocketFactory sslSocketFactory;
+	private static SSLSocketFactory debugSSLSocketFactory;
 
 	static String guessCharset(URLConnection conn) {
 		if (conn == null) {
@@ -89,7 +100,6 @@ abstract class HttpUtil {
 		}
 		return charset;
 	}
-
 
 	static URL appendCookieAsQuery(URL url, String cookie)
 			throws MalformedURLException {
@@ -338,9 +348,9 @@ abstract class HttpUtil {
 			if (cb instanceof PrepareCallback) {
 				type = new Type[] {
 						ReflectUtil.getParameterizedType(cbc,
-								PrepareCallback.class, 0),callbackType };
+								PrepareCallback.class, 0), callbackType };
 			} else {
-				type = new Type[] { null,callbackType };
+				type = new Type[] { null, callbackType };
 			}
 			callbackTypeMap.put(cbc, type);
 		}
@@ -393,47 +403,84 @@ abstract class HttpUtil {
 		}
 	}
 
-
 	static void showNetworkTips(String msg) {
 		UISupportImpl.INSTANCE.shortTips(msg);
 	}
 
 	static void trustConnection(URLConnection conn) {
+
 		if (conn instanceof HttpsURLConnection) {
-			HttpsURLConnection sonn = (HttpsURLConnection) conn;
-			// Create a trust manager that does not validate certificate chains
-			if (sslSocketFactory == null) {
-				TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
-					@Override
-					public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-						return null;
-					}
-
-					@Override
-					public void checkClientTrusted(X509Certificate[] certs,
-							String authType) {
-					}
-
-					@Override
-					public void checkServerTrusted(X509Certificate[] certs,
-							String authType) {
-					}
-				} };
-				try {
-					SSLContext sslContext = SSLContext.getInstance("TLS");
-					sslContext.init(null, trustAllCerts, null);
-					sslSocketFactory = sslContext.getSocketFactory();
-				} catch (Throwable e) {
-					DebugLog.error(e.getMessage(), e);
-				}
+			URL url = conn.getURL();
+			String host = url.getHost();
+			
+			
+			try {
+				InputStream ins = UIO.getApplication().getAssets().open(host.replaceAll("^\\w+\\.", "")+".cr");
+                KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                trustStore.load(null, null);
+                CertificateFactory cerFactory = CertificateFactory.getInstance("X.509");
+                Certificate cer = cerFactory.generateCertificate(ins);
+                trustStore.setCertificateEntry("trust", cer);
+                SSLSessionCache cache = new SSLSessionCache(UIO.getApplication());
+				SSLSocketFactory socketFactory = SSLCertificateSocketFactory.getInsecure(10000, cache );
+                                
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (CertificateException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (KeyStoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
+			
+			if (DebugLog.isDebug()) {
+				HttpsURLConnection sonn = (HttpsURLConnection) conn;
+				// Create a trust manager that does not validate certificate
+				// chains
+				if (debugSSLSocketFactory == null) {
+					TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+						@Override
+						public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+							return null;
+						}
 
-			if (sslSocketFactory != null) {
-				sonn.setSSLSocketFactory(sslSocketFactory);
-				sonn.setHostnameVerifier(org.apache.http.conn.ssl.SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+						@Override
+						public void checkClientTrusted(X509Certificate[] certs,
+								String authType) {
+						}
+
+						@Override
+						public void checkServerTrusted(X509Certificate[] certs,
+								String authType) {
+						}
+					} };
+					try {
+						SSLContext sslContext = SSLContext.getInstance("TLS");
+						sslContext.init(null, trustAllCerts, null);
+						debugSSLSocketFactory = sslContext.getSocketFactory();
+					} catch (Throwable e) {
+						DebugLog.error(e.getMessage(), e);
+					}
+				}
+				if (debugSSLSocketFactory != null) {
+					sonn.setSSLSocketFactory(debugSSLSocketFactory);
+					sonn.setHostnameVerifier(new HostnameVerifier() {
+						@Override
+						public boolean verify(String hostname, SSLSession session) {
+							return true;
+						}
+					});
+					//sonn.setHostnameVerifier(org.apache.http.conn.ssl.SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+				}
 			}
 		}
 	}
+
 	static void processRedirect(final URL url, URLConnection conn)
 			throws RedirectOutException {
 		if (conn != null) {
@@ -462,6 +509,7 @@ abstract class HttpUtil {
 			}
 		}
 	}
+
 	static class RedirectOutException extends ConnectException {
 		static int inc;
 		private static final long serialVersionUID = 1L;

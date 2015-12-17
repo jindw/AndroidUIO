@@ -123,14 +123,13 @@ public class UIO {
 	}
 
 	public static class Ext {
-
 		private static Application app = null;
 		private static NetworkSupport http = HttpSupportImpl.INSTANCE;
 		private static UISupport ui = UISupportImpl.INSTANCE;
 		private static StorageFactory storage = StorageFactoryImpl.INSTANCE;
 
 		public static void init(Application application) {
-			if (application != null && app == null) {
+			if (app == null && application != null) {
 				app = application;
 				http.init(application, 1024 * 1024 * 16);
 			}

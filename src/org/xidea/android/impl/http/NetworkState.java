@@ -31,7 +31,7 @@ final class NetworkState {
 
 	private int networkSubtype;
 
-	private Application application;
+	Application application;
 
 	NetworkState(Application application) {
 		this.application = application;
